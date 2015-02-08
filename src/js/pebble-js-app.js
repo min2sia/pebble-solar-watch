@@ -13,8 +13,8 @@ function coords_failed(err) {
 
 function coords_received(position) {
     //    can manually set coordinates here for testing...
-        position.coords.latitude = 55.35;
-        position.coords.longitude = 23.67;
+  //position.coords.latitude = 55.35;
+  //position.coords.longitude = 23.67;
 
     console.log("Got latitude: " + position.coords.latitude);
     console.log("Got longitude: " + position.coords.longitude);
