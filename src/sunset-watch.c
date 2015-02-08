@@ -379,16 +379,7 @@ static void face_layer_update_proc(Layer *layer, GContext *ctx) {
   **************************/
   if (setting_hour_numbers) {
     // draw hour text
-    struct tm fake_time;
-    char *time_format = "%l";
-    char hour_text[] = "12";
-
-    fake_time.tm_hour = 6;
-    strftime(hour_text, sizeof(hour_text), time_format, &fake_time);
-
-    // draw semi major hour text
-    fake_time.tm_hour = 6;
-    strftime(hour_text, sizeof(hour_text), time_format, &fake_time);
+    char hour_text[] = "00";
 
     deg_step = 45;
     for (int i=0;i<8;i++) {
@@ -399,6 +390,22 @@ static void face_layer_update_proc(Layer *layer, GContext *ctx) {
       current_point.x = (int16_t)x;
       current_point.y = (int16_t)y;
 
+		switch(i) {
+			case 0 : strcpy(hour_text, "18"); break;
+			case 1 : strcpy(hour_text, "21"); break;
+			case 2 : strcpy(hour_text, "0");  break;
+			case 3 : strcpy(hour_text, "3");  break;
+			case 4 : strcpy(hour_text, "6");  break;
+			case 5 : strcpy(hour_text, "9");  break;
+			case 6 : strcpy(hour_text, "12"); break;
+			case 7 : strcpy(hour_text, "15"); break;
+		}
+		
+		APP_LOG(APP_LOG_LEVEL_DEBUG, "i: %d.", i);
+		APP_LOG(APP_LOG_LEVEL_DEBUG, "x: %d.", current_point.x);
+		APP_LOG(APP_LOG_LEVEL_DEBUG, "y: %d.", current_point.y);
+		APP_LOG(APP_LOG_LEVEL_DEBUG, "hour_text: %s.", hour_text);
+
       draw_outlined_text(ctx,
 			 hour_text,
 			 fonts_get_system_font(FONT_KEY_GOTHIC_18_BOLD),
@@ -407,9 +414,6 @@ static void face_layer_update_proc(Layer *layer, GContext *ctx) {
 			 GTextAlignmentCenter,
 			 1,
 			 false);
-      (fake_time.tm_hour == 12) ? fake_time.tm_hour = 0 : true;
-      fake_time.tm_hour += 3;
-      strftime(hour_text, sizeof(hour_text), time_format, &fake_time);
     }
   }
 }
