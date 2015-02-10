@@ -19,7 +19,13 @@
     "longName": "Sunset Watch",
     "projectType": "native",
     "resources": {
-        "media": []
+        "media": [
+            {
+                "file": "images/sunset-watch.png",
+                "name": "IMAGE_SCREENSHOT",
+                "type": "png"
+            }
+        ]
     },
     "shortName": "Sunset Watch",
     "uuid": "89cf7751-1be0-4811-973e-a24f9961b7c5",
