@@ -346,15 +346,15 @@ static void face_layer_update_proc(Layer *layer, GContext *ctx) {
     DRAW PRIMITIVES FOR THIS LAYER
   *********************************/
   graphics_context_set_stroke_color(ctx, GColorBlack);
-  graphics_draw_circle(ctx, center, 65);
+  graphics_draw_circle(ctx, center, 68);
   graphics_context_set_stroke_color(ctx, GColorWhite);
-  graphics_draw_circle(ctx, center, 66);
+  graphics_draw_circle(ctx, center, 69);
   // yes, I'm really doing this...
-  for (int i=67;i<72;i++) {
+  for (int i=70;i<72;i++) {
       graphics_draw_circle(ctx, center, i);
   }
   center.y+=1;
-  for (int i=67;i<72;i++) {
+  for (int i=70;i<72;i++) {
       graphics_draw_circle(ctx, center, i);
   }
   center.y-=1;
@@ -374,8 +374,8 @@ static void face_layer_update_proc(Layer *layer, GContext *ctx) {
   deg_step = 45;
   for (int i=0;i<8;i++) {
     float current_rads = rad_factor * (deg_step * i);
-    float x = 72 + 60 * (my_cos(current_rads));
-    float y = 84 + 60 * (my_sin(current_rads));
+    float x = 72 + 62 * (my_cos(current_rads));
+    float y = 84 + 62 * (my_sin(current_rads));
     GPoint current_point;
     current_point.x = (int16_t)x;
     current_point.y = (int16_t)y;
@@ -385,8 +385,8 @@ static void face_layer_update_proc(Layer *layer, GContext *ctx) {
   deg_step = 15;
   for (int i=0;i<24;i++) {
     float current_rads = rad_factor * (deg_step * i);
-    float x = 72 + 60 * (my_cos(current_rads));
-    float y = 84 + 60 * (my_sin(current_rads));
+    float x = 72 + 62 * (my_cos(current_rads));
+    float y = 84 + 62 * (my_sin(current_rads));
     GPoint current_point;
     current_point.x = (int16_t)x;
     current_point.y = (int16_t)y;
@@ -396,8 +396,8 @@ static void face_layer_update_proc(Layer *layer, GContext *ctx) {
   deg_step = 90;
   for (int i=0;i<4;i++) {
     float current_rads = rad_factor * (deg_step * i);
-    float x = 72 + 60 * (my_cos(current_rads));
-    float y = 84 + 60 * (my_sin(current_rads));
+    float x = 72 + 62 * (my_cos(current_rads));
+    float y = 84 + 62 * (my_sin(current_rads));
     GPoint current_point;
     current_point.x = (int16_t)x;
     current_point.y = (int16_t)y;
@@ -444,8 +444,8 @@ static void face_layer_update_proc(Layer *layer, GContext *ctx) {
 }
 
 static const GPathInfo p_hour_hand_info = {
-  .num_points = 6,
-  .points = (GPoint []) {{4,0},{0,8},{-4,0},{-3,-60},{0,-65},{3,-60}}
+  .num_points = 3,
+  .points = (GPoint []) {{3,4},{-3,4},{0,-55}}
 };
 
 static const GPathInfo p_second_hand_info = {
@@ -700,7 +700,7 @@ char cSolarTimeOffset[] = "00:00";
     //TODO: applySolarTimeOffset(&sunriseTime);
     tmSolarTime.tm_min  += (int)(60*(solarTimeOffset-((int)(solarTimeOffset))));
     tmSolarTime.tm_hour += (int)solarTimeOffset - 12;
-    if (tmSolarTime.tm_min > 60) {
+    if (tmSolarTime.tm_min >= 60) {
       tmSolarTime.tm_min -= 60;
       tmSolarTime.tm_hour += 1;
     }
@@ -708,7 +708,7 @@ char cSolarTimeOffset[] = "00:00";
     draw_outlined_text(ctx,
            solar_time_text,
            fonts_get_system_font(FONT_KEY_BITHAM_34_MEDIUM_NUMBERS), //fonts_get_system_font(FONT_KEY_GOTHIC_28_BOLD),
-           GRect(34, 40, 80, 50), //GRect(42, 47, 64, 32),
+           GRect(29, 40, 90, 50), //GRect(42, 47, 64, 32),
            GTextOverflowModeFill,
            GTextAlignmentCenter,
            1,
@@ -718,7 +718,7 @@ char cSolarTimeOffset[] = "00:00";
     draw_outlined_text(ctx,
            wall_time_text,
            fonts_get_system_font(FONT_KEY_GOTHIC_28_BOLD),
-           GRect(42, 85, 64, 32),
+           GRect(42, 86, 64, 32),
            GTextOverflowModeFill,
            GTextAlignmentCenter,
            1,
