@@ -4,6 +4,10 @@
  */
 #include "suncalc.h"
 #include "my_math.h"
+  
+#define bool int
+#define true 1
+#define false 0  
 
 float calcSun(int year, int month, int day, float latitude, float longitude, int sunset, float zenith)
 {
@@ -91,6 +95,7 @@ float calcSun(int year, int month, int day, float latitude, float longitude, int
   return UT;
 }
 
+//TODO: retire
 float calcSunRise(int year, int month, int day, float latitude, float longitude, float zenith)
 {
   return calcSun(year, month, day, latitude, longitude, 0, zenith);
@@ -99,4 +104,33 @@ float calcSunRise(int year, int month, int day, float latitude, float longitude,
 float calcSunSet(int year, int month, int day, float latitude, float longitude, float zenith)
 {
   return calcSun(year, month, day, latitude, longitude, 1, zenith);
+}
+
+//static void adjustTimezone(float* time, double tz, bool dst) 
+//{
+//  int corrected_time = 12 + tz;
+//  if (dst) {
+//    corrected_time += 1;
+//  }
+//  *time += corrected_time;
+//    if (*time > 24) *time -= 24;
+//    if (*time < 0) *time += 24;
+//}
+
+// Calculates all sun time related variables
+void calcSunTimes(float *sunriseTime, float *sunsetTime, int year, int month, int day, float latitude, float longitude, float zenith, double tz, bool dst) {
+//  *sunriseTime = calcSun(year, month, day, latitude, longitude, 0, zenith);
+//  *sunsetTime  = calcSun(year, month, day, latitude, longitude, 1, zenith);
+  
+//  adjustTimezone(&sunriseTime, tz, dst);
+//  adjustTimezone(&sunsetTime,  tz, dst);
+  
+  //TODO:
+  //sunrise_time->tm_min = (int)(60*(sunriseTime-((int)(sunriseTime))));
+  //sunrise_time->tm_hour = (int)sunriseTime - 12;
+  //strftime(sunrise_text, sizeof(sunrise_text), time_format, sunrise_time);
+  
+  //sunset_time->tm_min = (int)(60*(sunsetTime-((int)(sunsetTime))));
+  //sunset_time->tm_hour = (int)sunsetTime + 12;
+  //strftime(sunset_text, sizeof(sunset_text), time_format, sunset_time);
 }

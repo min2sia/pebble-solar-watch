@@ -14,7 +14,6 @@ int current_moon_day = -1;
 float sunriseTime;
 float sunsetTime;
 float solarTimeOffset = 0;
-float solarNoonTime = 0; // TODO: remove after testing
 int phase;
 double lat;
 double lon;
@@ -367,9 +366,46 @@ static void face_layer_update_proc(Layer *layer, GContext *ctx) {
       graphics_draw_circle(ctx, center, i);
   }
 
-  float rad_factor = M_PI / 180;
+  float rad_factor;
   float deg_step;
-
+  
+  // draw sunrays
+  GPoint start_point;
+  GPoint end_point;
+  float current_rads;
+  float x;
+  float y;
+  int ray_length;
+  graphics_context_set_stroke_color(ctx, GColorWhite);  
+  rad_factor = M_PI / 180;
+  deg_step = 3;
+  
+  int my_abs(int in) {
+    if (in < 0) {
+      return in * -1;
+    }
+    return in;
+  }
+    
+  for (int i=-25;i<26;i++) {
+    current_rads = rad_factor * (deg_step * (i - 30));
+    
+    x = 73 * (my_cos(current_rads)) + 72;
+    y = 73 * (my_sin(current_rads)) + 84;
+    start_point.x = (int16_t)x;
+    start_point.y = (int16_t)y;
+    
+    ray_length = rand() % (int)(26 - my_abs(i)) / 2;
+    x = (80 + ray_length) * (my_cos(current_rads)) + 72;
+    y = (80 + ray_length) * (my_sin(current_rads)) + 84;
+    end_point.x = (int16_t)x;
+    end_point.y = (int16_t)y;
+    
+    graphics_draw_line(ctx, start_point, end_point);
+  }
+  
+  rad_factor = M_PI / 180;
+  
   // draw semi major hour marks
   deg_step = 45;
   for (int i=0;i<8;i++) {
@@ -444,8 +480,8 @@ static void face_layer_update_proc(Layer *layer, GContext *ctx) {
 }
 
 static const GPathInfo p_hour_hand_info = {
-  .num_points = 3,
-  .points = (GPoint []) {{3,4},{-3,4},{0,-55}}
+  .num_points = 5,
+  .points = (GPoint []) {{3,12},{-3,12},{-2,-55},{0,-56},{2,-55}}
 };
 
 static const GPathInfo p_second_hand_info = {
@@ -492,6 +528,11 @@ static void hand_layer_update_proc(Layer* layer, GContext* ctx) {
     gpath_draw_outline(ctx, p_second_hand);
     gpath_destroy(p_second_hand);
   }
+  
+  // Draw hand "pin"
+  //graphics_context_set_stroke_color(ctx, GColorBlack);
+  //graphics_draw_circle(ctx, center, 5);
+  draw_dot(ctx, center, 5);
 }
 
 GPathInfo sun_path_moon_mask_info = {
@@ -599,12 +640,12 @@ ftoa(tz_str_tmp, tz, 7);
   
   adjustTimezone(&sunriseTime);
   adjustTimezone(&sunsetTime);
-  if (sunsetTime > sunriseTime) {
-    solarNoonTime = sunriseTime + (sunsetTime - sunriseTime) / 2;
-    APP_LOG(APP_LOG_LEVEL_DEBUG, "solarNoonTime = %f", solarNoonTime);
-    solarTimeOffset = solarNoonTime - 12.0;
-    APP_LOG(APP_LOG_LEVEL_DEBUG, "solarTimeOffset = %f", solarTimeOffset);
-  }
+  //if (sunsetTime > sunriseTime) {
+  //  solarNoonTime = sunriseTime + (sunsetTime - sunriseTime) / 2;
+  //  APP_LOG(APP_LOG_LEVEL_DEBUG, "solarNoonTime = %f", solarNoonTime);
+  //  solarTimeOffset = solarNoonTime - 12.0;
+  //  APP_LOG(APP_LOG_LEVEL_DEBUG, "solarTimeOffset = %f", solarTimeOffset);
+  //}
   
   
   //calc_sun_times();
@@ -646,14 +687,15 @@ static void sunrise_sunset_text_layer_update_proc(Layer* layer, GContext* ctx) {
   //APP_LOG(APP_LOG_LEVEL_DEBUG, "  solarNoonTime=%s", solarNoonTime_tmp);
   //APP_LOG(APP_LOG_LEVEL_DEBUG, "  solarTimeOffset=%s", solarTimeOffset_tmp);
   
-    
+  GRect bounds = layer_get_bounds(layer);
+  GPoint center = grect_center_point(&bounds);     
   
   time_t now_epoch = time(NULL);
   struct tm now = *localtime(&now_epoch);
   struct tm tmSunriseTime = *localtime(&now_epoch);
   struct tm tmSunsetTime = *localtime(&now_epoch);
-  struct tm tmSolarNoonTime;
-  struct tm tmSolarTimeOffset;
+  //struct tm tmSolarNoonTime;
+  //struct tm tmSolarTimeOffset;
   struct tm tmSolarTime = *localtime(&now_epoch);
   static char sunrise_text[] = "00:00";
   static char sunset_text[] = "00:00";
@@ -674,26 +716,25 @@ static void sunrise_sunset_text_layer_update_proc(Layer* layer, GContext* ctx) {
   char *ellipsis = ".....";
   //char lat_str_tmp[15];
   //char lon_str_tmp[15];
-char cSolarNoonTime[] = "00:00";
-char cSolarTimeOffset[] = "00:00";
+//char cSolarNoonTime[] = "00:00";
+//char cSolarTimeOffset[] = "00:00";
   // don't calculate these if they've already been done for the day or if `lat' and `lon' haven't
   // been received from the phone yet.
   
 //TODO: uncomment
-  //  if ((current_sunrise_sunset_day != now->tm_mday)) {        
-    sunriseTime = calcSunRise(now.tm_year, now.tm_mon+1, now.tm_mday, lat, lon, 91.0f);
-    sunsetTime = calcSunSet(now.tm_year, now.tm_mon+1, now.tm_mday, lat, lon, 91.0f);
-    adjustTimezone(&sunriseTime);
-    adjustTimezone(&sunsetTime);
+    if ((current_sunrise_sunset_day != now.tm_mday)) {        
+      sunriseTime = calcSunRise(now.tm_year, now.tm_mon+1, now.tm_mday, lat, lon, 91.0f);
+      sunsetTime = calcSunSet(now.tm_year, now.tm_mon+1, now.tm_mday, lat, lon, 91.0f);
+      adjustTimezone(&sunriseTime);
+      adjustTimezone(&sunsetTime);
  
-    solarTimeOffset = sunriseTime + (sunsetTime - sunriseTime) / 2;
-    //}
+      solarTimeOffset = sunriseTime + (sunsetTime - sunriseTime) / 2;
+    }
 
     // don't calculate them again until tomorrow (unless we still don't have position)
     if (position) {
       current_sunrise_sunset_day = now.tm_mday;
     }
-//  }
 
   // draw current time
   if (setting_digital_display) {
@@ -703,12 +744,15 @@ char cSolarTimeOffset[] = "00:00";
     if (tmSolarTime.tm_min >= 60) {
       tmSolarTime.tm_min -= 60;
       tmSolarTime.tm_hour += 1;
+      if (tmSolarTime.tm_hour > 23) {
+        tmSolarTime.tm_hour = 0;
+      }
     }
     strftime(solar_time_text, sizeof(solar_time_text), time_format, &tmSolarTime);
     draw_outlined_text(ctx,
            solar_time_text,
-           fonts_get_system_font(FONT_KEY_BITHAM_34_MEDIUM_NUMBERS), //fonts_get_system_font(FONT_KEY_GOTHIC_28_BOLD),
-           GRect(29, 40, 90, 50), //GRect(42, 47, 64, 32),
+           fonts_get_system_font(FONT_KEY_BITHAM_34_MEDIUM_NUMBERS),
+           GRect(center.x - 50, 40, 100, 50), //GRect(42, 47, 64, 32),
            GTextOverflowModeFill,
            GTextAlignmentCenter,
            1,
