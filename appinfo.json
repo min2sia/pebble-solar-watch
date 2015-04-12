@@ -22,12 +22,17 @@
         "media": [
             {
                 "file": "images/sunset-watch.png",
+                "menuIcon": true,
                 "name": "IMAGE_SCREENSHOT",
                 "type": "png"
             }
         ]
     },
+    "sdkVersion": "3",
     "shortName": "Sunset Watch",
+    "targetPlatforms": [
+        "aplite"
+    ],
     "uuid": "89cf7751-1be0-4811-973e-a24f9961b7c5",
     "versionCode": 1,
     "versionLabel": "1.0",
