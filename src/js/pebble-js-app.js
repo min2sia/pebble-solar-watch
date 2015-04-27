@@ -1,14 +1,14 @@
 var config_url = "http://mtc.nfshost.com/sunset-watch-config.html";
 
 Pebble.addEventListener("ready",
-	function(e) {
-		console.log("JS starting...");
-		navigator.geolocation.getCurrentPosition(coords_received,coords_failed);
-	}
+    unction(e) {
+        console.log("JS starting...");
+        navigator.geolocation.getCurrentPosition(coords_received,coords_failed);
+    }
 );
 
 function coords_failed(err) {
-	console.log("Didn't get coordinates with error: " + err.code);
+    console.log("Didn't get coordinates with error: " + err.code);
 }
 
 function coords_received(position) {
@@ -29,7 +29,7 @@ function coords_received(position) {
 Pebble.addEventListener("appmessage", function(e) {
     console.log("Received from phone: " + JSON.stringify(e.payload));
 });
-			
+
 Pebble.addEventListener("showConfiguration", function(e) {
     Pebble.openURL(config_url);
 });
