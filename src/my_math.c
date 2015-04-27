@@ -138,3 +138,15 @@ float my_tan(float x)
 {
   return my_sin(x) / my_cos(x);
 }
+
+int my_abs(int in) {
+    if (in < 0) {
+        return in * -1;
+    }
+    return in;
+}
+
+double round(double number)
+{
+    return (number >= 0) ? (int)(number + 0.5) : (int)(number - 0.5);
+}

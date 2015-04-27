@@ -9,3 +9,5 @@ float my_cos(float x);
 float my_acos (float x);
 float my_asin (float x);
 float my_tan(float x);
+int my_abs(int in);
+double round(double number);
