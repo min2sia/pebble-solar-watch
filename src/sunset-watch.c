@@ -11,6 +11,8 @@ static Layer *moon_layer;
 static Layer *battery_layer;
 int current_sunrise_sunset_day = -1;
 int current_moon_day = -1;
+time_t clock_time_t = 0;
+struct tm *clock_time = &(struct tm) { .tm_hour = 0, .tm_min = 0 };
 float sunriseTime;
 float sunsetTime;
 float solarTimeOffset = 0;
@@ -135,7 +137,9 @@ double round(double number)
 }
 
 static void handle_time_tick(struct tm *tick_time, TimeUnits units_changed) {
-    APP_LOG(APP_LOG_LEVEL_DEBUG, "Tick: marking face_layer dirty...");
+    APP_LOG(APP_LOG_LEVEL_DEBUG, "handle_time_tick()");
+    clock_time_t = time(NULL);
+    clock_time = localtime(&clock_time_t);
     layer_mark_dirty(face_layer);  
 }
 
@@ -496,16 +500,10 @@ static void hand_layer_update_proc(Layer* layer, GContext* ctx) {
     static GPath *p_hour_hand = NULL;
     static GPath *p_second_hand = NULL;
     
-    time_t now_epoch = time(NULL);
-    struct tm *now = localtime(&now_epoch);
-    
-    // NEXT LINE FOR TESTING ONLY
-    //  time.tm_hour = 12;
-    
-    int32_t second_angle = now->tm_sec * 6;
+    int32_t second_angle = clock_time->tm_sec * 6;
     
     // 24 hour hand
-    int32_t hour_angle = (((now->tm_hour * 60) + now->tm_min) / 4) + 180;
+    int32_t hour_angle = (((clock_time->tm_hour * 60) + clock_time->tm_min) / 4) + 180;
     
     // draw the hour hand
     graphics_context_set_stroke_color(ctx, GColorWhite);
@@ -594,13 +592,11 @@ void applySolarTimeOffset(float* time)
 //
 void calc_sun_times() {
     APP_LOG(APP_LOG_LEVEL_DEBUG, "calc_sun_times()");
-    time_t now_epoch = time(NULL);
-    struct tm *now = localtime(&now_epoch);
     
     //sunriseTime = calcSunRise(2014, 2, 9, 55.26, 23.65, 91.0f);
     //sunsetTime  = calcSunSet (2014, 2, 9, 55.26, 23.65, 91.0f);
-    sunriseTime = calcSunRise(now->tm_year, now->tm_mon+1, now->tm_mday, lat, lon, 91.0f);
-    sunsetTime  = calcSunSet (now->tm_year, now->tm_mon+1, now->tm_mday, lat, lon, 91.0f);
+    sunriseTime = calcSunRise(clock_time->tm_year, clock_time->tm_mon+1, clock_time->tm_mday, lat, lon, 91.0f);
+    sunsetTime  = calcSunSet (clock_time->tm_year, clock_time->tm_mon+1, clock_time->tm_mday, lat, lon, 91.0f);
     /* struct tm *sunrise_time = localtime(&now_epoch); */
     /* struct tm *sunset_time = localtime(&now_epoch); */
     
@@ -630,13 +626,11 @@ static void sunlight_layer_update_proc(Layer* layer, GContext* ctx) {
     GRect bounds = layer_get_bounds(layer);
     GPoint center = grect_center_point(&bounds);
     
-    time_t now_epoch = time(NULL);
-    struct tm *time = localtime(&now_epoch);
     /* struct tm *sunrise_time = localtime(&now_epoch); */
     /* struct tm *sunset_time = localtime(&now_epoch); */
     
-    sunriseTime = calcSunRise(time->tm_year, time->tm_mon+1, time->tm_mday, lat, lon, 91.0f);
-    sunsetTime = calcSunSet(time->tm_year, time->tm_mon+1, time->tm_mday, lat, lon, 91.0f);
+    sunriseTime = calcSunRise(clock_time->tm_year, clock_time->tm_mon+1, clock_time->tm_mday, lat, lon, 91.0f);
+    sunsetTime = calcSunSet  (clock_time->tm_year, clock_time->tm_mon+1, clock_time->tm_mday, lat, lon, 91.0f);
     
     adjustTimezone(&sunriseTime);
     adjustTimezone(&sunsetTime);
@@ -689,13 +683,11 @@ static void sunrise_sunset_text_layer_update_proc(Layer* layer, GContext* ctx) {
     GRect bounds = layer_get_bounds(layer);
     GPoint center = grect_center_point(&bounds);     
     
-    time_t now_epoch = time(NULL);
-    struct tm now = *localtime(&now_epoch);
-    struct tm tmSunriseTime = *localtime(&now_epoch);
-    struct tm tmSunsetTime = *localtime(&now_epoch);
+    struct tm tmSunriseTime = *localtime(&clock_time_t);
+    struct tm tmSunsetTime  = *localtime(&clock_time_t);
     //struct tm tmSolarNoonTime;
     //struct tm tmSolarTimeOffset;
-    struct tm tmSolarTime = *localtime(&now_epoch);
+    struct tm tmSolarTime   = *localtime(&clock_time_t);
     static char sunrise_text[] = "00:00";
     static char sunset_text[] = "00:00";
     static char wall_time_text[] = "00:00";
@@ -721,9 +713,9 @@ static void sunrise_sunset_text_layer_update_proc(Layer* layer, GContext* ctx) {
     // been received from the phone yet.
     
     //TODO: uncomment
-    if ((current_sunrise_sunset_day != now.tm_mday)) {        
-        sunriseTime = calcSunRise(now.tm_year, now.tm_mon+1, now.tm_mday, lat, lon, 91.0f);
-        sunsetTime = calcSunSet(now.tm_year, now.tm_mon+1, now.tm_mday, lat, lon, 91.0f);
+    if ((current_sunrise_sunset_day != clock_time->tm_mday)) {        
+        sunriseTime = calcSunRise(clock_time->tm_year, clock_time->tm_mon+1, clock_time->tm_mday, lat, lon, 91.0f);
+        sunsetTime  = calcSunSet (clock_time->tm_year, clock_time->tm_mon+1, clock_time->tm_mday, lat, lon, 91.0f);
         adjustTimezone(&sunriseTime);
         adjustTimezone(&sunsetTime);
         
@@ -732,7 +724,7 @@ static void sunrise_sunset_text_layer_update_proc(Layer* layer, GContext* ctx) {
     
     // don't calculate them again until tomorrow (unless we still don't have position)
     if (position) {
-        current_sunrise_sunset_day = now.tm_mday;
+        current_sunrise_sunset_day = clock_time->tm_mday;
     }
     
     // draw current time
@@ -769,7 +761,7 @@ static void sunrise_sunset_text_layer_update_proc(Layer* layer, GContext* ctx) {
         1,
         false);
         
-        strftime(wall_time_text, sizeof(wall_time_text), time_format, &now);
+        strftime(wall_time_text, sizeof(wall_time_text), time_format, clock_time);
         draw_outlined_text(ctx,
         wall_time_text,
         fonts_get_system_font(FONT_KEY_GOTHIC_28_BOLD),
@@ -821,7 +813,7 @@ static void sunrise_sunset_text_layer_update_proc(Layer* layer, GContext* ctx) {
     }
     
     //draw current date month
-    strftime(month_text, sizeof(month_text), month_format, &now);
+    strftime(month_text, sizeof(month_text), month_format, clock_time);
     draw_outlined_text(ctx,
     month_text,
     fonts_get_system_font(FONT_KEY_GOTHIC_18_BOLD),
@@ -831,7 +823,7 @@ static void sunrise_sunset_text_layer_update_proc(Layer* layer, GContext* ctx) {
     0,
     true);
     //draw current date day
-    strftime(day_text, sizeof(day_text), day_format, &now);
+    strftime(day_text, sizeof(day_text), day_format, clock_time);
     draw_outlined_text(ctx,
     day_text,
     fonts_get_system_font(FONT_KEY_GOTHIC_18_BOLD),
@@ -856,15 +848,12 @@ int moon_phase(struct tm *time) {
 }
 
 static void moon_layer_update_proc(Layer* layer, GContext* ctx) {
-    if (setting_moon_phase) {
-        time_t now_epoch = time(NULL);
-        struct tm *now = localtime(&now_epoch);
-        
+    if (setting_moon_phase) {        
         // don't do any calculations if they've already been done for today.
-        if (current_moon_day != now->tm_mday) {
-            phase = moon_phase(now);
+        if (current_moon_day != clock_time->tm_mday) {
+            phase = moon_phase(clock_time);
             // we don't have to calculate this again until tomorrow...
-            current_moon_day = now->tm_mday;
+            current_moon_day = clock_time->tm_mday;
         }
         
         int moon_y = 108;  // y-axis position of the moon's center
