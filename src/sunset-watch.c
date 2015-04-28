@@ -8,28 +8,25 @@ static Layer *hand_layer;
 static Layer *sunlight_layer;
 static Layer *sunrise_sunset_text_layer;
 static Layer *battery_layer;
-int current_sunrise_sunset_day = -1;
 
 time_t clock_time_t = 0;
 time_t utc_time_t   = 0;
 time_t solar_time_t = 0;
-//struct tm *clock_time_tm = &(struct tm) { .tm_hour = 0, .tm_min = 0 };
-//struct tm *utc_time_tm   = &(struct tm) { .tm_hour = 0, .tm_min = 0 };
-//struct tm *solar_time_tm = &(struct tm) { .tm_hour = 0, .tm_min = 0 };
-struct tm clock_time_tm = { .tm_hour = 0, .tm_min = 0 };
-struct tm utc_time_tm   = { .tm_hour = 0, .tm_min = 0 };
-struct tm solar_time_tm = { .tm_hour = 0, .tm_min = 0 };
-int32_t utc_offset; // phone clock time - UTC in seconds
+float sunrise_time;
+float sunset_time;
+struct tm clock_time_tm   = { .tm_hour = 0, .tm_min = 0 };
+struct tm utc_time_tm     = { .tm_hour = 0, .tm_min = 0 };
+struct tm solar_time_tm   = { .tm_hour = 0, .tm_min = 0 };
+struct tm sunrise_time_tm = { .tm_hour = 0, .tm_min = 0 };
+struct tm sunset_time_tm  = { .tm_hour = 0, .tm_min = 0 };
+int32_t utc_offset; // Phone clock time - UTC in seconds. Note that offset is negative
 int32_t seconds_per_degree = 4 * 60; // The Sun travels 1 degree of longtitude in 4 minutes
+int current_sunrise_sunset_day = -1;
 
-float sunriseTime;
-float sunsetTime;
-
-int phase;
 double lat;
 double lon;
-double tz;
 bool location = false;
+
 int current_battery_charge = -1;
 char *battery_level_string = "100%";
 
@@ -158,10 +155,38 @@ static void update_time() {
         if (solar_time_tm.tm_hour < 0) {
             solar_time_tm.tm_hour = solar_time_tm.tm_hour + 24;
         }
+        
+        if ((current_sunrise_sunset_day != clock_time_tm.tm_mday && utc_offset != 0)) {     
+            current_sunrise_sunset_day = clock_time_tm.tm_mday;
+            
+            sunrise_time = calcSunRise(clock_time_tm.tm_year, clock_time_tm.tm_mon+1, clock_time_tm.tm_mday, lat, lon, 91.0f);
+            sunset_time  = calcSunSet (clock_time_tm.tm_year, clock_time_tm.tm_mon+1, clock_time_tm.tm_mday, lat, lon, 91.0f);   
+            
+            // add solar offset:
+            sunrise_time += seconds_per_degree * lon / 3600;
+            sunset_time  += seconds_per_degree * lon / 3600;
+            
+            // add UTC offset:
+            //sunrise_time -= utc_offset / 3600;
+            //sunset_time  -= utc_offset / 3600;
+            
+            
+            sunrise_time_tm.tm_hour = (int)sunrise_time;
+            sunrise_time_tm.tm_min  = (int)(60*(sunrise_time-sunrise_time_tm.tm_hour));
+            sunset_time_tm.tm_hour  = (int)sunset_time;
+            sunset_time_tm.tm_min   = (int)(60*(sunset_time-sunset_time_tm.tm_hour));            
+        }
     }
-    APP_LOG(APP_LOG_LEVEL_DEBUG, "    clock time: %d:%d", clock_time_tm.tm_hour, clock_time_tm.tm_min);
-    APP_LOG(APP_LOG_LEVEL_DEBUG, "    UTC time:   %d:%d", utc_time_tm.tm_hour,   utc_time_tm.tm_min);  
-    APP_LOG(APP_LOG_LEVEL_DEBUG, "    solar time: %d:%d", solar_time_tm.tm_hour, solar_time_tm.tm_min);  
+    APP_LOG(APP_LOG_LEVEL_DEBUG, "    clock time:   %d:%d", clock_time_tm.tm_hour,   clock_time_tm.tm_min);
+    APP_LOG(APP_LOG_LEVEL_DEBUG, "    UTC time:     %d:%d", utc_time_tm.tm_hour,     utc_time_tm.tm_min);  
+    APP_LOG(APP_LOG_LEVEL_DEBUG, "    solar time:   %d:%d", solar_time_tm.tm_hour,   solar_time_tm.tm_min); 
+    
+    char sunrise_str_tmp[15];
+    char sunset_str_tmp[15];
+    ftoa(sunrise_str_tmp, sunrise_time, 7);
+    ftoa(sunset_str_tmp, sunset_time, 7);
+    APP_LOG(APP_LOG_LEVEL_DEBUG, "    sunrise time: %d:%d (%s)", sunrise_time_tm.tm_hour, sunrise_time_tm.tm_min, sunrise_str_tmp);
+    APP_LOG(APP_LOG_LEVEL_DEBUG, "    sunset time:  %d:%d (%s)", sunset_time_tm.tm_hour,  sunset_time_tm.tm_min,  sunset_str_tmp);
 }
 
 static void handle_time_tick(struct tm *tick_time, TimeUnits units_changed) {
@@ -186,7 +211,7 @@ enum {
     DS = 0x8,
     MT = 0x9,
     MO = 0xA,
-    TZO = 11
+    UTC = 11
     /* ML = 0xB, */
     /* MLAT = 0xC, */
     /* MLON = 0xD */
@@ -194,7 +219,6 @@ enum {
 // Define outside enum so it does not break web config:
 #define LLAT 0xE   // last known latitude
 #define LLON 0xF   // last know longtitude
-#define LTZ  0x01  // last know TZ offset
 
 void in_received_handler(DictionaryIterator *received, void *ctx) {
     //APP_LOG(APP_LOG_LEVEL_DEBUG, "in_received_handler()");
@@ -203,7 +227,7 @@ void in_received_handler(DictionaryIterator *received, void *ctx) {
     Tuple *digital_display = dict_find(received, DD);
     Tuple *hour_numbers = dict_find(received, HN);
     Tuple *battery_status = dict_find(received, BS);
-    Tuple *timezone_offset_tuple = dict_find(received, TZO);
+    Tuple *timezone_offset_tuple = dict_find(received, UTC);
     
     APP_LOG(APP_LOG_LEVEL_DEBUG, "Received from phone:");
     if (latitude && longitude) {
@@ -216,6 +240,9 @@ void in_received_handler(DictionaryIterator *received, void *ctx) {
             lat = lat_new;
             lon = lon_new;
             
+            // next line forces recalculation of sunrise/sunset times (in case DS/TZ option is changed).
+            current_sunrise_sunset_day = -1;
+            
             // without marking one of the layers dirty,
             // we have to wait until the next tick_event
             // to see the new masks.
@@ -223,6 +250,7 @@ void in_received_handler(DictionaryIterator *received, void *ctx) {
             layer_mark_dirty(sunrise_sunset_text_layer);
         }
     }
+    
     if (timezone_offset_tuple) {        
         utc_offset = timezone_offset_tuple->value->int32;
     }    
@@ -232,12 +260,6 @@ void in_received_handler(DictionaryIterator *received, void *ctx) {
         setting_hour_numbers = (hour_numbers->value->uint32  == 1) ? true : false;
         setting_battery_status = (battery_status->value->uint32  == 1) ? true : false;
     }
-    
-    // next line forces recalculation of sunrise/sunset times (in case DS/TZ option is changed).
-    current_sunrise_sunset_day = -1;
-    
-    tick_timer_service_unsubscribe();
-    tick_timer_service_subscribe(MINUTE_UNIT, handle_time_tick);
     
     update_time();
 }
@@ -334,6 +356,8 @@ static void update_battery_percentage(BatteryChargeState c) {
 
 static void face_layer_update_proc(Layer *layer, GContext *ctx) {
     APP_LOG(APP_LOG_LEVEL_DEBUG, "face_layer_update_proc()");
+    
+    update_time();
     
     GRect bounds = layer_get_bounds(layer);
     GPoint center = grect_center_point(&bounds);  
@@ -499,17 +523,6 @@ static void hand_layer_update_proc(Layer* layer, GContext* ctx) {
     draw_dot(ctx, center, 5);
 }
 
-GPathInfo sun_path_moon_mask_info = {
-    5,
-    (GPoint []) {
-        {0, 0},
-        {-73, +84}, //replaced by sunrise angle
-        {-73, -84}, //top left
-        {+73, -84}, //top right
-        {+73, +84}, //replaced by sunset angle
-    }
-};
-
 GPathInfo sun_path_info = {
     5,
     (GPoint []) {
@@ -534,56 +547,24 @@ static void battery_layer_update_proc(Layer* layer, GContext* ctx) {
     }
 }
 
-// (Re)calculate sunrise, sunset, noon, etc. times
-//
-void calc_sun_times() {
-    APP_LOG(APP_LOG_LEVEL_DEBUG, "calc_sun_times()");
-    
-    //sunriseTime = calcSunRise(2014, 2, 9, 55.26, 23.65, 91.0f);
-    //sunsetTime  = calcSunSet (2014, 2, 9, 55.26, 23.65, 91.0f);
-    sunriseTime = calcSunRise(clock_time_tm.tm_year, clock_time_tm.tm_mon+1, clock_time_tm.tm_mday, lat, lon, 91.0f);
-    sunsetTime  = calcSunSet (clock_time_tm.tm_year, clock_time_tm.tm_mon+1, clock_time_tm.tm_mday, lat, lon, 91.0f);
-    /* struct tm *sunrise_time = localtime(&now_epoch); */
-    /* struct tm *sunset_time = localtime(&now_epoch); */
-    
-    //sunriseTime = calcSunRise(time->tm_year, time->tm_mon+1, time->tm_mday, lat, lon, 91.0f);
-    
-   
-    //if (sunsetTime > sunriseTime) {
-    //  solarNoonTime = sunriseTime + (sunsetTime - sunriseTime) / 2;
-    //  solarTimeOffset = solarNoonTime - 12.0;
-//}
-
-//APP_LOG(APP_LOG_LEVEL_DEBUG, "solarNoonTime = %f", solarNoonTime);
-}
-
 static void sunlight_layer_update_proc(Layer* layer, GContext* ctx) {
-    //APP_LOG(APP_LOG_LEVEL_DEBUG, "sunlight_layer_update_proc()");
-    char lat_str_tmp[15];
-    char lon_str_tmp[15];
-    char tz_str_tmp[15];
-    ftoa(lat_str_tmp, lat, 7);
-    ftoa(lon_str_tmp, lon, 7);
-    ftoa(tz_str_tmp, tz, 7);
-    //APP_LOG(APP_LOG_LEVEL_DEBUG, "  current location: %s %s, tz: %s", lat_str_tmp, lon_str_tmp, tz_str_tmp);
+    APP_LOG(APP_LOG_LEVEL_DEBUG, "sunlight_layer_update_proc()");
+    
+    update_time();
     
     GRect bounds = layer_get_bounds(layer);
     GPoint center = grect_center_point(&bounds);
     
-    sunriseTime = calcSunRise(clock_time_tm.tm_year, clock_time_tm.tm_mon+1, clock_time_tm.tm_mday, lat, lon, 91.0f);
-    sunsetTime  = calcSunSet (clock_time_tm.tm_year, clock_time_tm.tm_mon+1, clock_time_tm.tm_mday, lat, lon, 91.0f);
+    //TODO: works somewhat ok, but could be more accurate
+    //APP_LOG(APP_LOG_LEVEL_DEBUG, "sun_path_info.points[1].x = %d", sun_path_info.points[1].x);
+    sun_path_info.points[1].x = -(int16_t)(my_sin(sunrise_time/24 * M_PI * 2) * 120);
+    //APP_LOG(APP_LOG_LEVEL_DEBUG, "sun_path_info.points[1].x = %d", sun_path_info.points[1].x);
     
-    sun_path_info.points[1].x = (int16_t)(my_sin(sunriseTime/24 * M_PI * 2) * 120);
-    sun_path_info.points[1].y = -(int16_t)(my_cos(sunriseTime/24 * M_PI * 2) * 120);
+    sun_path_info.points[1].y = (int16_t)(my_cos(sunrise_time/24 * M_PI * 2) * 120);
+    //APP_LOG(APP_LOG_LEVEL_DEBUG, "sun_path_info.points[1].y = %d", sun_path_info.points[1].y);
 
-    sun_path_info.points[4].x = (int16_t)(my_sin(sunsetTime/24 * M_PI * 2) * 120);
-    sun_path_info.points[4].y = -(int16_t)(my_cos(sunsetTime/24 * M_PI * 2) * 120);
-
-    sun_path_moon_mask_info.points[1].x = (int16_t)(my_sin(sunriseTime/24 * M_PI * 2) * 120);
-    sun_path_moon_mask_info.points[1].y = -(int16_t)(my_cos(sunriseTime/24 * M_PI * 2) * 120);
-
-    sun_path_moon_mask_info.points[4].x = (int16_t)(my_sin(sunsetTime/24 * M_PI * 2) * 120);
-    sun_path_moon_mask_info.points[4].y = -(int16_t)(my_cos(sunsetTime/24 * M_PI * 2) * 120);
+    sun_path_info.points[4].x = -(int16_t)(my_sin(sunset_time/24 * M_PI * 2) * 120);
+    sun_path_info.points[4].y =  (int16_t)(my_cos(sunset_time/24 * M_PI * 2) * 120);
 
     struct GPath *sun_path;
     sun_path = gpath_create(&sun_path_info);
@@ -600,17 +581,14 @@ static void sunlight_layer_update_proc(Layer* layer, GContext* ctx) {
 static void sunrise_sunset_text_layer_update_proc(Layer* layer, GContext* ctx) {
     APP_LOG(APP_LOG_LEVEL_DEBUG, "sunrise_sunset_text_layer_update_proc()"); 
     
+    update_time();
+    
     GRect bounds = layer_get_bounds(layer);
     GPoint center = grect_center_point(&bounds);     
     
-    struct tm tmSunriseTime = *localtime(&clock_time_t);
-    struct tm tmSunsetTime  = *localtime(&clock_time_t);
-    
-    //struct tm tmSolarTime   = *localtime(&clock_time_t);
-    
     static char sunrise_text[] = "00:00";
     static char sunset_text[] = "00:00";
-    static char wall_time_text[] = "00:00";
+    static char clock_time_text[] = "00:00";
     static char solar_time_text[] = "00:00";
     static char month_text[] = "Jan";
     static char day_text[] = "00";
@@ -618,108 +596,93 @@ static void sunrise_sunset_text_layer_update_proc(Layer* layer, GContext* ctx) {
     
     if (clock_is_24h_style()) {
         time_format = "%H:%M";
-    }
-    else {
+    } else {
         time_format = "%l:%M";
     }
     char *month_format = "%b";
     char *day_format = "%e";
     char *ellipsis = ".....";
     
-    //TODO: uncomment
-    if ((current_sunrise_sunset_day != clock_time_tm.tm_mday)) {        
-        sunriseTime = calcSunRise(clock_time_tm.tm_year, clock_time_tm.tm_mon+1, clock_time_tm.tm_mday, lat, lon, 91.0f);
-        sunsetTime  = calcSunSet (clock_time_tm.tm_year, clock_time_tm.tm_mon+1, clock_time_tm.tm_mday, lat, lon, 91.0f);
-    }
-    
-    // don't calculate them again until tomorrow (unless we still don't have position)
-    if (location) {
-        current_sunrise_sunset_day = clock_time_tm.tm_mday;
-    }
-    
     // draw current time
     if (setting_digital_display) {   
         strftime(solar_time_text, sizeof(solar_time_text), time_format, &solar_time_tm);
         draw_outlined_text(ctx,
-        solar_time_text,
-        fonts_get_system_font(FONT_KEY_BITHAM_34_MEDIUM_NUMBERS),
-        GRect(center.x - 50, 40, 100, 50), //GRect(42, 47, 64, 32),
-        GTextOverflowModeFill,
-        GTextAlignmentCenter,
-        1,
-        false);
+            solar_time_text,
+            fonts_get_system_font(FONT_KEY_BITHAM_34_MEDIUM_NUMBERS),
+            GRect(center.x - 50, 40, 100, 50), //GRect(42, 47, 64, 32),
+            GTextOverflowModeFill,
+            GTextAlignmentCenter,
+            1,
+            false);
         
-        strftime(wall_time_text, sizeof(wall_time_text), time_format, &clock_time_tm);
+        strftime(clock_time_text, sizeof(clock_time_text), time_format, &clock_time_tm);
         draw_outlined_text(ctx,
-        wall_time_text,
-        fonts_get_system_font(FONT_KEY_GOTHIC_28_BOLD),
-        GRect(42, 86, 64, 32),
-        GTextOverflowModeFill,
-        GTextAlignmentCenter,
-        1,
-        true);
+            clock_time_text,
+            fonts_get_system_font(FONT_KEY_GOTHIC_28_BOLD),
+            GRect(42, 86, 64, 32),
+            GTextOverflowModeFill,
+            GTextAlignmentCenter,
+            1,
+            true);
     }
-    // print sunrise/sunset times (if we can calculate our location)
-    tmSunriseTime.tm_min = (int)(60*(sunriseTime-((int)(sunriseTime))));
-    tmSunriseTime.tm_hour = (int)sunriseTime - 12;
-    strftime(sunrise_text, sizeof(sunrise_text), time_format, &tmSunriseTime);
-    tmSunsetTime.tm_min = (int)(60*(sunsetTime-((int)(sunsetTime))));
-    tmSunsetTime.tm_hour = (int)sunsetTime + 12;
-    strftime(sunset_text, sizeof(sunset_text), time_format, &tmSunsetTime);
+    
+    strftime(sunrise_text, sizeof(sunrise_text), time_format, &sunrise_time_tm);
+    strftime(sunset_text,  sizeof(sunset_text),  time_format, &sunset_time_tm);
     graphics_context_set_text_color(ctx, GColorWhite);
     
     if (location) {
         graphics_draw_text(ctx,
-        sunrise_text,
-        fonts_get_system_font(FONT_KEY_GOTHIC_18_BOLD),
-        GRect(3, 145, 144-3, 168-145),
-        GTextOverflowModeWordWrap,
-        GTextAlignmentLeft,
-        NULL);
+            sunrise_text,
+            fonts_get_system_font(FONT_KEY_GOTHIC_18_BOLD),
+            GRect(3, 145, 144-3, 168-145),
+            GTextOverflowModeWordWrap,
+            GTextAlignmentLeft,
+            NULL);
         graphics_draw_text(ctx,
-        sunset_text,
-        fonts_get_system_font(FONT_KEY_GOTHIC_18_BOLD),
-        GRect(3, 145, 144-3, 168-145),
-        GTextOverflowModeWordWrap,
-        GTextAlignmentRight,
-        NULL);
-        } else {
+            sunset_text,
+            fonts_get_system_font(FONT_KEY_GOTHIC_18_BOLD),
+            GRect(3, 145, 144-3, 168-145),
+            GTextOverflowModeWordWrap,
+            GTextAlignmentRight,
+            NULL);
+    } else {
         graphics_draw_text(ctx,
-        ellipsis,
-        fonts_get_system_font(FONT_KEY_GOTHIC_18_BOLD),
-        GRect(3, 145, 144-3, 168-145),
-        GTextOverflowModeWordWrap,
-        GTextAlignmentLeft,
-        NULL);
+            ellipsis,
+            fonts_get_system_font(FONT_KEY_GOTHIC_18_BOLD),
+            GRect(3, 145, 144-3, 168-145),
+            GTextOverflowModeWordWrap,
+            GTextAlignmentLeft,
+            NULL);
         graphics_draw_text(ctx,
-        ellipsis,
-        fonts_get_system_font(FONT_KEY_GOTHIC_18_BOLD),
-        GRect(3, 145, 144-3, 168-145),
-        GTextOverflowModeWordWrap,
-        GTextAlignmentRight,
-        NULL);
+            ellipsis,
+            fonts_get_system_font(FONT_KEY_GOTHIC_18_BOLD),
+            GRect(3, 145, 144-3, 168-145),
+            GTextOverflowModeWordWrap,
+            GTextAlignmentRight,
+            NULL);
     }
     
     //draw current date month
     strftime(month_text, sizeof(month_text), month_format, &clock_time_tm);
     draw_outlined_text(ctx,
-    month_text,
-    fonts_get_system_font(FONT_KEY_GOTHIC_18_BOLD),
-    GRect(3, 0, 144-3, 32),
-    GTextOverflowModeWordWrap,
-    GTextAlignmentLeft,
-    0,
-    true);
+        month_text,
+        fonts_get_system_font(FONT_KEY_GOTHIC_18_BOLD),
+        GRect(3, 0, 144-3, 32),
+        GTextOverflowModeWordWrap,
+        GTextAlignmentLeft,
+        0,
+        true);
+    
     //draw current date day
     strftime(day_text, sizeof(day_text), day_format, &clock_time_tm);
     draw_outlined_text(ctx,
-    day_text,
-    fonts_get_system_font(FONT_KEY_GOTHIC_18_BOLD),
-    GRect(3, 0, 144-13, 32),
-    GTextOverflowModeWordWrap,
-    GTextAlignmentRight,
-    0,
-    true);
+        day_text,
+        fonts_get_system_font(FONT_KEY_GOTHIC_18_BOLD),
+        GRect(3, 0, 144-13, 32),
+        GTextOverflowModeWordWrap,
+        GTextAlignmentRight,
+        0,
+        true);
 }
 
 static void window_unload(Window *window) {
@@ -784,12 +747,15 @@ static void init(void) {
     if (persist_exists(LLAT) && persist_exists(LLON)) {
         persist_read_string(LLAT, lat_str, sizeof(lat_str));
         persist_read_string(LLON, lon_str, sizeof(lon_str));
-        APP_LOG(APP_LOG_LEVEL_DEBUG, "Retrieved from storage: lat=%s lon=%s.", lat_str, lon_str);
         lat = myatof(lat_str); 
         lon = myatof(lon_str); 
         if (lat != 0 || lon != 0) {
             location = true;
         }      
+    }
+    
+    if (persist_exists(UTC)) {
+        utc_offset = persist_read_int(UTC);
     }
         
     tick_timer_service_subscribe(MINUTE_UNIT, handle_time_tick);
@@ -801,7 +767,6 @@ static void init(void) {
 static void deinit(void) {
     char lat_str[15]; 
     char lon_str[15];
-    char tz_str[5];
     
     persist_write_bool(DD, setting_digital_display);
     persist_write_bool(HN, setting_hour_numbers);
@@ -809,12 +774,10 @@ static void deinit(void) {
     
     ftoa(lat_str, lat, 7);
     ftoa(lon_str, lon, 7);
-    ftoa(tz_str, tz, 2);
     
     persist_write_string(LLAT, lat_str);
     persist_write_string(LLON, lon_str);
-    persist_write_string(LTZ,  tz_str);
-    APP_LOG(APP_LOG_LEVEL_DEBUG, "Saving to storage: lat=%s lon=%s, tz=%s.", lat_str, lon_str, tz_str);
+    persist_write_int(UTC, utc_offset);
     
     layer_remove_from_parent(hand_layer);
     layer_remove_from_parent(sunlight_layer);
@@ -835,7 +798,7 @@ int main(void) {
     init();
     
     APP_LOG(APP_LOG_LEVEL_DEBUG, "Done initializing, pushed window: %p", window);
-    APP_LOG(APP_LOG_LEVEL_DEBUG, "Max inbox size: %d.", (int) app_message_inbox_size_maximum());
+    APP_LOG(APP_LOG_LEVEL_DEBUG, "Max inbox size:  %d.", (int) app_message_inbox_size_maximum());
     APP_LOG(APP_LOG_LEVEL_DEBUG, "Max outbox size: %d.", (int) app_message_outbox_size_maximum());
     
     app_event_loop();
