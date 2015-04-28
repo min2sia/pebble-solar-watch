@@ -16,8 +16,8 @@
         "location",
         "configurable"
     ],
-    "companyName": "Smognus",
-    "longName": "Sunset Watch",
+    "companyName": "bhakterija",
+    "longName": "Solar Watch",
     "projectType": "native",
     "resources": {
         "media": [
@@ -30,7 +30,7 @@
         ]
     },
     "sdkVersion": "3",
-    "shortName": "Sunset Watch",
+    "shortName": "Solar Watch",
     "targetPlatforms": [
         "aplite"
     ],
