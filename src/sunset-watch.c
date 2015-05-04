@@ -19,7 +19,8 @@ struct tm utc_time_tm     = { .tm_hour = 0, .tm_min = 0 };
 struct tm solar_time_tm   = { .tm_hour = 0, .tm_min = 0 };
 struct tm sunrise_time_tm = { .tm_hour = 0, .tm_min = 0 };
 struct tm sunset_time_tm  = { .tm_hour = 0, .tm_min = 0 };
-int32_t utc_offset; // Phone clock time - UTC in seconds. Note that offset is negative
+int32_t timezone_offset; // Phone clock time - UTC in seconds. Note that offset is negative
+int32_t solar_offset;
 int32_t seconds_per_degree = 4 * 60; // The Sun travels 1 degree of longtitude in 4 minutes
 int current_sunrise_sunset_day = -1;
 
@@ -129,17 +130,37 @@ void ftoa(char* str, double val, int precision) {
     *str = '\0';
 }
 
+static void send_request(int command) {
+  Tuplet command_tuple = TupletInteger(0 /*KEY_COMMAND*/ , command);
+  Tuplet index_tuple = TupletInteger(1 /*KEY_INDEX*/, 0 /*entryIndex*/);
+  DictionaryIterator *iter;
+  app_message_outbox_begin(&iter);
+  if (iter == NULL)
+    return;
+  dict_write_tuplet(iter, &command_tuple);
+  dict_write_tuplet(iter, &index_tuple);
+  dict_write_end(iter);
+  app_message_outbox_send();
+}
+
 static void update_time() {
     APP_LOG(APP_LOG_LEVEL_DEBUG, "update_time()");
     
     clock_time_t = time(NULL);
     clock_time_tm = *localtime(&clock_time_t);
 
-    utc_time_t = clock_time_t + utc_offset;
+    utc_time_t = clock_time_t + timezone_offset;
     utc_time_tm = *localtime(&utc_time_t);
     
     if (location) {
-        solar_time_t = utc_time_t + (int32_t)(seconds_per_degree * lon);
+        // Solar time can be calculated in several ways, producing slightly different results
+        // 1. Solar mean time can be calculated by adding longtitude degrees (from Greenwich Meridian (0° longitude)) multiplied by 4 minutes to UTC time
+        // It does not take into account the equation of time
+        //solar_time_t = utc_time_t + (int32_t)(seconds_per_degree * lon);
+        
+        // 2. True solar time takes into account the equation of time, so it reflects true Sun's position, 
+        // but then duration of the day is not exactly 24 hours
+        solar_time_t  = clock_time_t + solar_offset;
         solar_time_tm = *localtime(&solar_time_t);
         
         if (solar_time_tm.tm_min >= 60) {
@@ -156,37 +177,47 @@ static void update_time() {
             solar_time_tm.tm_hour = solar_time_tm.tm_hour + 24;
         }
         
-        if ((current_sunrise_sunset_day != clock_time_tm.tm_mday && utc_offset != 0)) {     
+        // Convert times to decimal format to be used for drawing:
+        sunrise_time = sunrise_time_tm.tm_hour + (sunrise_time_tm.tm_min/60);
+        sunset_time  = sunset_time_tm.tm_hour  + (sunset_time_tm.tm_min/60);
+        // and apply solar offset, so it displays symmetric solar night
+        sunrise_time += (solar_offset/3600);
+        sunset_time  += (solar_offset/3600);
+        
+        if ((current_sunrise_sunset_day != clock_time_tm.tm_mday)) {   
+            
             current_sunrise_sunset_day = clock_time_tm.tm_mday;
             
-            sunrise_time = calcSunRise(clock_time_tm.tm_year, clock_time_tm.tm_mon+1, clock_time_tm.tm_mday, lat, lon, 91.0f);
-            sunset_time  = calcSunSet (clock_time_tm.tm_year, clock_time_tm.tm_mon+1, clock_time_tm.tm_mday, lat, lon, 91.0f);   
+            send_request(5); // request data refresh from phone JS
+            
+            //sunrise_time = calcSunRise(clock_time_tm.tm_year, clock_time_tm.tm_mon+1, clock_time_tm.tm_mday, lat, lon, 91.0f);
+            //sunset_time  = calcSunSet (clock_time_tm.tm_year, clock_time_tm.tm_mon+1, clock_time_tm.tm_mday, lat, lon, 91.0f);   
             
             // add solar offset:
-            sunrise_time += seconds_per_degree * lon / 3600;
-            sunset_time  += seconds_per_degree * lon / 3600;
+            //sunrise_time += seconds_per_degree * lon / 3600;
+            //sunset_time  += seconds_per_degree * lon / 3600;
             
             // add UTC offset:
             //sunrise_time -= utc_offset / 3600;
             //sunset_time  -= utc_offset / 3600;
             
             
-            sunrise_time_tm.tm_hour = (int)sunrise_time;
-            sunrise_time_tm.tm_min  = (int)(60*(sunrise_time-sunrise_time_tm.tm_hour));
-            sunset_time_tm.tm_hour  = (int)sunset_time;
-            sunset_time_tm.tm_min   = (int)(60*(sunset_time-sunset_time_tm.tm_hour));            
+            //sunrise_time_tm.tm_hour = (int)sunrise_time;
+            //sunrise_time_tm.tm_min  = (int)(60*(sunrise_time-sunrise_time_tm.tm_hour));
+            //sunset_time_tm.tm_hour  = (int)sunset_time;
+            //sunset_time_tm.tm_min   = (int)(60*(sunset_time-sunset_time_tm.tm_hour));            
         }
     }
-    APP_LOG(APP_LOG_LEVEL_DEBUG, "    clock time:   %d:%d", clock_time_tm.tm_hour,   clock_time_tm.tm_min);
-    APP_LOG(APP_LOG_LEVEL_DEBUG, "    UTC time:     %d:%d", utc_time_tm.tm_hour,     utc_time_tm.tm_min);  
-    APP_LOG(APP_LOG_LEVEL_DEBUG, "    solar time:   %d:%d", solar_time_tm.tm_hour,   solar_time_tm.tm_min); 
+    //APP_LOG(APP_LOG_LEVEL_DEBUG, "    clock time:   %d:%d", clock_time_tm.tm_hour,   clock_time_tm.tm_min);
+    //APP_LOG(APP_LOG_LEVEL_DEBUG, "    UTC time:     %d:%d", utc_time_tm.tm_hour,     utc_time_tm.tm_min);  
+    //APP_LOG(APP_LOG_LEVEL_DEBUG, "    solar time:   %d:%d", solar_time_tm.tm_hour,   solar_time_tm.tm_min); 
     
-    char sunrise_str_tmp[15];
-    char sunset_str_tmp[15];
-    ftoa(sunrise_str_tmp, sunrise_time, 7);
-    ftoa(sunset_str_tmp, sunset_time, 7);
-    APP_LOG(APP_LOG_LEVEL_DEBUG, "    sunrise time: %d:%d (%s)", sunrise_time_tm.tm_hour, sunrise_time_tm.tm_min, sunrise_str_tmp);
-    APP_LOG(APP_LOG_LEVEL_DEBUG, "    sunset time:  %d:%d (%s)", sunset_time_tm.tm_hour,  sunset_time_tm.tm_min,  sunset_str_tmp);
+    //char sunrise_str_tmp[15];
+    //char sunset_str_tmp[15];
+    //ftoa(sunrise_str_tmp, sunrise_time, 7);
+    //ftoa(sunset_str_tmp, sunset_time, 7);
+    APP_LOG(APP_LOG_LEVEL_DEBUG, "    sunrise time: %d:%d", sunrise_time_tm.tm_hour, sunrise_time_tm.tm_min);
+    APP_LOG(APP_LOG_LEVEL_DEBUG, "    sunset time:  %d:%d", sunset_time_tm.tm_hour,  sunset_time_tm.tm_min);
 }
 
 static void handle_time_tick(struct tm *tick_time, TimeUnits units_changed) {
@@ -211,7 +242,12 @@ enum {
     DS = 0x8,
     MT = 0x9,
     MO = 0xA,
-    UTC = 11
+    TIMEZONE_OFFSET = 11,
+    SOLAR_OFFSET = 12,
+    SUNRISE_HOURS = 13,
+    SUNRISE_MINUTES = 14,
+    SUNSET_HOURS = 15,
+    SUNSET_MINUTES = 16
     /* ML = 0xB, */
     /* MLAT = 0xC, */
     /* MLON = 0xD */
@@ -221,14 +257,19 @@ enum {
 #define LLON 0xF   // last know longtitude
 
 void in_received_handler(DictionaryIterator *received, void *ctx) {
-    //APP_LOG(APP_LOG_LEVEL_DEBUG, "in_received_handler()");
-    Tuple *latitude = dict_find(received, LAT);
-    Tuple *longitude = dict_find(received, LON);
-    Tuple *digital_display = dict_find(received, DD);
-    Tuple *hour_numbers = dict_find(received, HN);
-    Tuple *battery_status = dict_find(received, BS);
-    Tuple *timezone_offset_tuple = dict_find(received, UTC);
-    
+    APP_LOG(APP_LOG_LEVEL_DEBUG, "in_received_handler()");
+    Tuple *latitude              = dict_find(received, LAT);
+    Tuple *longitude             = dict_find(received, LON);
+    Tuple *digital_display       = dict_find(received, DD);
+    Tuple *hour_numbers          = dict_find(received, HN);
+    Tuple *battery_status        = dict_find(received, BS);
+    Tuple *timezone_offset_tuple = dict_find(received, TIMEZONE_OFFSET);
+    Tuple *solar_offset_tuple    = dict_find(received, SOLAR_OFFSET);
+    Tuple *sunrise_hours_tuple   = dict_find(received, SUNRISE_HOURS);
+    Tuple *sunrise_minutes_tuple = dict_find(received, SUNRISE_MINUTES);
+    Tuple *sunset_hours_tuple    = dict_find(received, SUNSET_HOURS);
+    Tuple *sunset_minutes_tuple  = dict_find(received, SUNSET_MINUTES);
+   
     APP_LOG(APP_LOG_LEVEL_DEBUG, "Received from phone:");
     if (latitude && longitude) {
         APP_LOG(APP_LOG_LEVEL_DEBUG, "    lat=%s, lon=%s", latitude->value->cstring, longitude->value->cstring);    
@@ -252,8 +293,21 @@ void in_received_handler(DictionaryIterator *received, void *ctx) {
     }
     
     if (timezone_offset_tuple) {        
-        utc_offset = timezone_offset_tuple->value->int32;
+        timezone_offset = timezone_offset_tuple->value->int32;
     }    
+    
+    if (solar_offset_tuple) {        
+        solar_offset = solar_offset_tuple->value->int32;
+    } 
+    
+    if (sunrise_hours_tuple && sunrise_minutes_tuple) {        
+        sunrise_time_tm.tm_hour = sunrise_hours_tuple->value->int32;
+        sunrise_time_tm.tm_min  = sunrise_minutes_tuple->value->int32;
+    }
+    if (sunset_hours_tuple && sunset_minutes_tuple) {        
+        sunset_time_tm.tm_hour = sunset_hours_tuple->value->int32;
+        sunset_time_tm.tm_min  = sunset_minutes_tuple->value->int32;
+    }
     
     if (digital_display && hour_numbers && battery_status) {
         setting_digital_display = (digital_display->value->uint32 == 1) ? true : false;
@@ -608,7 +662,7 @@ static void sunrise_sunset_text_layer_update_proc(Layer* layer, GContext* ctx) {
         strftime(solar_time_text, sizeof(solar_time_text), time_format, &solar_time_tm);
         draw_outlined_text(ctx,
             solar_time_text,
-            fonts_get_system_font(FONT_KEY_BITHAM_34_MEDIUM_NUMBERS),
+            fonts_get_system_font(FONT_KEY_BITHAM_30_BLACK),//FONT_KEY_BITHAM_34_MEDIUM_NUMBERS),
             GRect(center.x - 50, 40, 100, 50), //GRect(42, 47, 64, 32),
             GTextOverflowModeFill,
             GTextAlignmentCenter,
@@ -754,8 +808,8 @@ static void init(void) {
         }      
     }
     
-    if (persist_exists(UTC)) {
-        utc_offset = persist_read_int(UTC);
+    if (persist_exists(TIMEZONE_OFFSET)) {
+        timezone_offset = persist_read_int(TIMEZONE_OFFSET);
     }
         
     tick_timer_service_subscribe(MINUTE_UNIT, handle_time_tick);
@@ -777,7 +831,7 @@ static void deinit(void) {
     
     persist_write_string(LLAT, lat_str);
     persist_write_string(LLON, lon_str);
-    persist_write_int(UTC, utc_offset);
+    persist_write_int(TIMEZONE_OFFSET, timezone_offset);
     
     layer_remove_from_parent(hand_layer);
     layer_remove_from_parent(sunlight_layer);

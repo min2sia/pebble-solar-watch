@@ -8,13 +8,17 @@
         "longitude": 2,
         "moon_phase": 6,
         "second_hand": 3,
-        "timezoneOffsetJS": 11,
+        "solarOffset": 12,
+        "sunriseHours": 13,
+        "sunriseMinutes": 14,
+        "sunsetHours": 15,
+        "sunsetMinutes": 16,
+        "timezoneOffset": 11,
         "tz_bool": 9,
         "tz_offset": 10
     },
     "capabilities": [
-        "location",
-        "configurable"
+        "location"
     ],
     "companyName": "bhakterija",
     "longName": "Solar Watch",
