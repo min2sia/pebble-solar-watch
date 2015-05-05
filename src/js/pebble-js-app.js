@@ -1,32 +1,46 @@
 var config_url = "http://mtc.nfshost.com/sunset-watch-config.html";
 var latitude;
 var longitude;
+var solarOffset;
+var sunrise;
+var sunset;
 
 Pebble.addEventListener("ready",
     function(e) {
         console.log("JS starting...");
-        //
-        // Timezone offset
-        //        
-        var timezoneOffset = new Date().getTimezoneOffset() * 60;
-        Pebble.sendAppMessage({ "timezoneOffset": timezoneOffset },
-          function(e) { console.log("Successfully sent timezoneOffsetJS="+ timezoneOffset +", transactionId=" + e.data.transactionId); },
-          function(e) { console.log("Failed sending timezoneOffsetJS with transactionId=" + e.data.transactionId);});  
-    
+            
         latitude  = localStorage.getItem("latitude");
         longitude = localStorage.getItem("longitude");
         console.log("Retrieved from localStorage: latitude=" + latitude + ", longitude=" + longitude);
         
         requestLocationAsync(); 
-        calculateSunData();
     }
 );
 
 Pebble.addEventListener('appmessage',
     function(e) {
         console.log('Received appmessage: ' + JSON.stringify(e.payload));
+        
+        requestLocationAsync(); 
     }
 );
+
+function sendToWatch() {
+    console.log("Sending sun data:");
+        console.log("  solarOffset = " + solarOffset);
+        console.log("  sunrise     = " + sunrise.getHours() + ":" + sunrise.getMinutes());
+        console.log("  sunset      = " + sunset.getHours()  + ":" + sunset.getMinutes());
+    
+    Pebble.sendAppMessage( 
+        {"solarOffset"    : solarOffset,
+         "sunriseHours"   : sunrise.getHours(),
+         "sunriseMinutes" : sunrise.getMinutes(),
+         "sunsetHours"    : sunset.getHours(),
+         "sunsetMinutes"  : sunset.getMinutes()},
+      function(e) { console.log("Successfully delivered message with transactionId="   + e.data.transactionId); },
+      function(e) { console.log("Unsuccessfully delivered message with transactionId=" + e.data.transactionId);}
+    );
+}
 
 function requestLocationAsync() {
     navigator.geolocation.getCurrentPosition(
@@ -46,14 +60,8 @@ function locationSuccess(position) {
     localStorage.setItem("latitude",  latitude);
     localStorage.setItem("longitude", longitude);
     
-    calculateSunData();
-    
-    Pebble.sendAppMessage( 
-        {"latitude"  : latitude.toString(),
-         "longitude" : longitude.toString()},
-      function(e) { console.log("Successfully delivered message with transactionId="   + e.data.transactionId); },
-      function(e) { console.log("Unsuccessfully delivered message with transactionId=" + e.data.transactionId);}
-    );
+    calculateSunData();   
+    sendToWatch();
 }
 function locationError(error) {
     console.log("navigator.geolocation.getCurrentPosition() returned error " + error.code);
@@ -71,32 +79,21 @@ function locationError(error) {
             console.log("  Unknown error.");
             break;
     }    
+    
+    // use last cached location if available
+    calculateSunData();   
+    sendToWatch();
 }
 
 function calculateSunData() {
     if (latitude && longitude) {
         var times = SunCalc.getTimes(new Date(), latitude, longitude);
-        var sunrise = times.sunrise;
-        var sunset = times.sunset;
+        sunrise = times.sunrise;
+        sunset = times.sunset;
         var solarNoon = times.solarNoon;
         var zoneNoon = new Date();
         zoneNoon.setHours(12, 0, 0);
-        var solarOffset = Math.floor((zoneNoon.getTime() - solarNoon.getTime()) / 1000);
-        
-        console.log("Sending sun data:");
-        console.log("  solarOffset = " + solarOffset);
-        console.log("  sunrise     = " + sunrise.getHours() + ":" + sunrise.getMinutes());
-        console.log("  sunset      = " + sunset.getHours()  + ":" + sunset.getMinutes());
-        
-        Pebble.sendAppMessage( 
-            {"solarOffset"    : solarOffset,
-             "sunriseHours"   : sunrise.getHours(),
-             "sunriseMinutes" : sunrise.getMinutes(),
-             "sunsetHours"    : sunset.getHours(),
-             "sunsetMinutes"  : sunset.getMinutes()},
-            function(e) { console.log("Successfully delivered message with transactionId="   + e.data.transactionId); },
-            function(e) { console.log("Unsuccessfully delivered message with transactionId=" + e.data.transactionId);}
-        );
+        solarOffset = Math.floor((zoneNoon.getTime() - solarNoon.getTime()) / 1000);
     }    
 }
 
