@@ -1,6 +1,5 @@
 #include <pebble.h>
 #include "my_math.h"
-#include "suncalc.h"
 
 static Window *window;
 static Layer *face_layer;
