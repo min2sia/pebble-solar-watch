@@ -47,7 +47,7 @@ function requestLocationAsync() {
         locationSuccess,
         locationError,
         {
-            timeout: 15000, 
+            timeout: 10000, 
             maximumAge: Infinity
         }
     );    
@@ -86,12 +86,16 @@ function locationError(error) {
 }
 
 function calculateSunData() {
+    // Test location:
+    //latitude  = 54.69922
+    //longitude = 25.213801;
+    
     if (latitude && longitude) {
         var times = SunCalc.getTimes(new Date(), latitude, longitude);
         sunrise = times.sunrise;
         sunset = times.sunset;
         var solarNoon = times.solarNoon;
-        var zoneNoon = new Date();
+        var zoneNoon  = new Date(solarNoon); 
         zoneNoon.setHours(12, 0, 0);
         solarOffset = Math.floor((zoneNoon.getTime() - solarNoon.getTime()) / 1000);
     }    

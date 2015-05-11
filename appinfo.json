@@ -26,8 +26,7 @@
     "resources": {
         "media": [
             {
-                "file": "images/sunset-watch.png",
-                "menuIcon": true,
+                "file": "images/solar-watch.png",
                 "name": "IMAGE_SCREENSHOT",
                 "type": "png"
             }
