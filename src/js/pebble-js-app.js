@@ -1,9 +1,25 @@
-var config_url = "http://mtc.nfshost.com/sunset-watch-config.html";
+//var config_url = "http://mtc.nfshost.com/sunset-watch-config.html";
 var latitude;
 var longitude;
 var solarOffset;
 var sunrise;
 var sunset;
+var applicationStarting = true;
+
+// There are two cases when data is sent to watch:
+// 1. On application startup. If location service is not available cached location is used.
+// 2. Periodic update. Data is sent only if location is available and location has changed considerably
+
+function requestLocationAsync() {
+    navigator.geolocation.getCurrentPosition(
+        locationSuccess,
+        locationError,
+        {
+            timeout: 10000, 
+            maximumAge: Infinity
+        }
+    );    
+}
 
 Pebble.addEventListener("ready",
     function(e) {
@@ -13,7 +29,11 @@ Pebble.addEventListener("ready",
         longitude = localStorage.getItem("longitude");
         console.log("Retrieved from localStorage: latitude=" + latitude + ", longitude=" + longitude);
         
-        requestLocationAsync(); 
+        // Call first time when starting:
+        requestLocationAsync();
+        
+        // Schedule periodic position poll every 30 minutes:
+        setInterval(function() {requestLocationAsync();}, 30*60*1000); 
     }
 );
 
@@ -42,17 +62,11 @@ function sendToWatch() {
     );
 }
 
-function requestLocationAsync() {
-    navigator.geolocation.getCurrentPosition(
-        locationSuccess,
-        locationError,
-        {
-            timeout: 10000, 
-            maximumAge: Infinity
-        }
-    );    
-}
+
 function locationSuccess(position) {
+    var lastLatitude  = latitude;
+    var lastLongitude = longitude;
+    
     latitude  = position.coords.latitude;
     longitude = position.coords.longitude;
     console.log("Got position: lat " + latitude + ", long " + longitude);
@@ -60,8 +74,15 @@ function locationSuccess(position) {
     localStorage.setItem("latitude",  latitude);
     localStorage.setItem("longitude", longitude);
     
-    calculateSunData();   
-    sendToWatch();
+    if (applicationStarting) {
+        calculateSunData();   
+        sendToWatch();    
+        applicationStarting = false;
+    } else if (Math.abs(latitude - lastLatitude) > 0.1 || Math.abs(longitude - lastLongitude) > 0.1) { // if location change is significant
+        calculateSunData();   
+        sendToWatch();  
+    }
+    
 }
 function locationError(error) {
     console.log("navigator.geolocation.getCurrentPosition() returned error " + error.code);
@@ -80,9 +101,12 @@ function locationError(error) {
             break;
     }    
     
-    // use last cached location if available
-    calculateSunData();   
-    sendToWatch();
+    if (applicationStarting) {
+        // use last cached location if available
+        calculateSunData();   
+        sendToWatch();
+        applicationStarting = false;
+    }
 }
 
 function calculateSunData() {
@@ -101,22 +125,22 @@ function calculateSunData() {
     }    
 }
 
-Pebble.addEventListener("showConfiguration", function(e) {
-    Pebble.openURL(config_url);
-});
+//Pebble.addEventListener("showConfiguration", function(e) {
+//    Pebble.openURL(config_url);
+//});
 
-Pebble.addEventListener("webviewclosed", function(e) {
-    console.log("Configuration closed");
-    console.log(e.response);
-    if (e.response) {
-      var options = JSON.parse(decodeURIComponent(e.response));
-      console.log("Options = " + JSON.stringify(options));
-      Pebble.sendAppMessage( options );
-    }
-    else {
-      console.log("User clicked cancel.");
-    }
-});
+//Pebble.addEventListener("webviewclosed", function(e) {
+//    console.log("Configuration closed");
+//    console.log(e.response);
+//    if (e.response) {
+//      var options = JSON.parse(decodeURIComponent(e.response));
+//      console.log("Options = " + JSON.stringify(options));
+//      Pebble.sendAppMessage( options );
+//    }
+//    else {
+//      console.log("User clicked cancel.");
+//    }
+//});
 
 /*------------------------------------------------------------------------------------
  (c) 2011-2014, Vladimir Agafonkin

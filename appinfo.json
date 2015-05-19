@@ -38,7 +38,6 @@
         "aplite"
     ],
     "uuid": "89cf7751-1be0-4811-973e-a24f9961b7c5",
-    "versionCode": 1,
     "versionLabel": "1.0",
     "watchapp": {
         "watchface": true
