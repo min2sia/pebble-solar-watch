@@ -11,4 +11,6 @@ In Ayurveda - the most ancient science of health - there are numerous recommenda
 
 This watchface is intendet to help you get the best of both worlds: it displays both your timezone time and your location's solar time side-by-side. It uses phone's location to calculate your local solar time. Also it visualizes the duration of night and day, and displays your local sunrise and sunset times.
 
-This watchface is a fork from https://github.com/smognus/sunset-watch, which in turn was based on KarbonPebbler's watchface http://www.mypebblefaces.com/apps/1528/2270/ and others.
+This watchface was initially based on https://github.com/smognus/sunset-watch, which in turn was based on KarbonPebbler's watchface http://www.mypebblefaces.com/apps/1528/2270/ and others.
+
+If you like it you can drop a bit or two at bitcoin:1Ma79J2yShjfE9pojgQVgSmxvYXzJHkTGM. Thanks!
