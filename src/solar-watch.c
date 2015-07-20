@@ -157,13 +157,21 @@ static void update_time() {
     if (solar_time_tm.tm_hour < 0) {
         solar_time_tm.tm_hour = solar_time_tm.tm_hour + 24;
     }
-        
-    // Convert times to decimal format to be used for drawing:
-    sunrise_time = sunrise_time_tm.tm_hour + (sunrise_time_tm.tm_min/60);
-    sunset_time  = sunset_time_tm.tm_hour  + (sunset_time_tm.tm_min/60);
+    
+    sunrise_time = sunrise_time_tm.tm_hour + (sunrise_time_tm.tm_min / 60.0);
+    sunset_time  = sunset_time_tm.tm_hour  + (sunset_time_tm.tm_min  / 60.0);   
+    
+
+    
     // and apply solar offset, so it displays symmetric solar night
-    sunrise_time += (solar_offset/3600);
-    sunset_time  += (solar_offset/3600);
+    sunrise_time += solar_offset / 3600.0;
+    sunset_time  += solar_offset / 3600.0;
+    
+    //char txt[5];      
+    //ftoa(txt, sunrise_time, 2);    
+    //APP_LOG(APP_LOG_LEVEL_DEBUG, "    sunrise time:   %s", txt);
+    //ftoa(txt, sunset_time, 2);    
+    //APP_LOG(APP_LOG_LEVEL_DEBUG, "    sunset time:    %s", txt);
       
     if ((current_sunrise_sunset_day != clock_time_tm.tm_mday)) {   
           
@@ -177,9 +185,9 @@ static void update_time() {
     layer_mark_dirty(sunlight_layer);
     layer_mark_dirty(sunrise_sunset_text_layer);
     
-    //APP_LOG(APP_LOG_LEVEL_DEBUG, "    clock time:   %d:%d", clock_time_tm.tm_hour,   clock_time_tm.tm_min);
-    //APP_LOG(APP_LOG_LEVEL_DEBUG, "    UTC time:     %d:%d", utc_time_tm.tm_hour,     utc_time_tm.tm_min);  
-    //APP_LOG(APP_LOG_LEVEL_DEBUG, "    solar time:   %d:%d", solar_time_tm.tm_hour,   solar_time_tm.tm_min); 
+    APP_LOG(APP_LOG_LEVEL_DEBUG, "    clock time:   %d:%d", clock_time_tm.tm_hour,   clock_time_tm.tm_min);
+    APP_LOG(APP_LOG_LEVEL_DEBUG, "    solar time:   %d:%d", solar_time_tm.tm_hour,   solar_time_tm.tm_min); 
+
     
     //char sunrise_str_tmp[15];
     //char sunset_str_tmp[15];
@@ -320,7 +328,7 @@ static void draw_dot(GContext* ctx, GPoint center, int radius) {
 static void update_battery_percentage(BatteryChargeState c) {
     if (setting_battery_status) {
         int battery_level_int = c.charge_percent;
-        snprintf(battery_level_string, sizeof(battery_level_string), "%d%%", battery_level_int);
+        snprintf(battery_level_string, 4, "%d%%", battery_level_int);
         layer_mark_dirty(battery_layer);
         APP_LOG(APP_LOG_LEVEL_DEBUG, "Battery change: battery_layer marked dirty...");
     }
