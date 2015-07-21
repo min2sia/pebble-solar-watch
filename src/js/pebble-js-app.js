@@ -32,8 +32,8 @@ Pebble.addEventListener("ready",
         // Call first time when starting:
         requestLocationAsync();
         
-        // Schedule periodic position poll every 30 minutes:
-        setInterval(function() {requestLocationAsync();}, 30*60*1000); 
+        // Schedule periodic position poll every X minutes:
+        setInterval(function() {requestLocationAsync();}, 15*60*1000); 
     }
 );
 
@@ -78,7 +78,7 @@ function locationSuccess(position) {
         calculateSunData();   
         sendToWatch();    
         applicationStarting = false;
-    } else if (Math.abs(latitude - lastLatitude) > 0.1 || Math.abs(longitude - lastLongitude) > 0.1) { // if location change is significant
+    } else if (Math.abs(latitude - lastLatitude) > 0.01 || Math.abs(longitude - lastLongitude) > 0.01) { // if location change is significant
         calculateSunData();   
         sendToWatch();  
     }

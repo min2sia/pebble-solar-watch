@@ -198,8 +198,7 @@ static void update_time() {
 }
 
 static void handle_time_tick(struct tm *tick_time, TimeUnits units_changed) {
-    APP_LOG(APP_LOG_LEVEL_DEBUG, "handle_time_tick()");
-    
+    APP_LOG(APP_LOG_LEVEL_DEBUG, "handle_time_tick()");    
     update_time();
 }
 
@@ -223,6 +222,8 @@ void in_received_handler(DictionaryIterator *received, void *ctx) {
     Tuple *sunset_hours_tuple    = dict_find(received, SUNSET_HOURS);
     Tuple *sunset_minutes_tuple  = dict_find(received, SUNSET_MINUTES);
    
+    vibes_short_pulse();
+    
     APP_LOG(APP_LOG_LEVEL_DEBUG, "Received from phone:");
 
     if (solar_offset_tuple) {         
@@ -337,7 +338,7 @@ static void update_battery_percentage(BatteryChargeState c) {
 static void face_layer_update_proc(Layer *layer, GContext *ctx) {
     APP_LOG(APP_LOG_LEVEL_DEBUG, "face_layer_update_proc()");
     
-    update_time();
+    //update_time();
     
     GRect bounds = layer_get_bounds(layer);
     GPoint center = grect_center_point(&bounds);  
