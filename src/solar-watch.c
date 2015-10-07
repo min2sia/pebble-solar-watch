@@ -161,8 +161,6 @@ static void update_time() {
     sunrise_time = sunrise_time_tm.tm_hour + (sunrise_time_tm.tm_min / 60.0);
     sunset_time  = sunset_time_tm.tm_hour  + (sunset_time_tm.tm_min  / 60.0);   
     
-
-    
     // and apply solar offset, so it displays symmetric solar night
     sunrise_time += solar_offset / 3600.0;
     sunset_time  += solar_offset / 3600.0;
@@ -222,7 +220,8 @@ void in_received_handler(DictionaryIterator *received, void *ctx) {
     Tuple *sunset_hours_tuple    = dict_find(received, SUNSET_HOURS);
     Tuple *sunset_minutes_tuple  = dict_find(received, SUNSET_MINUTES);
    
-    vibes_short_pulse();
+    // Does BZZZ. Disabled for now
+    //vibes_short_pulse();
     
     APP_LOG(APP_LOG_LEVEL_DEBUG, "Received from phone:");
 
