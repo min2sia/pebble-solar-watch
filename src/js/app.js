@@ -13,20 +13,10 @@ var applicationStarting = true;
 function requestLocationAsync() {
     console.log("requestLocationAsync()");
     navigator.geolocation.getCurrentPosition(
-        locationSuccessLo,
-        locationErrorLo,
+        locationSuccess,
+        locationError,
         {
             enableHighAccuracy: false, // default
-            timeout: 10000, 
-            maximumAge: Infinity
-        }
-    );
-    
-    navigator.geolocation.getCurrentPosition(
-        locationSuccessHi,
-        locationErrorHi,
-        {
-            enableHighAccuracy: true, // default
             timeout: 10000, 
             maximumAge: Infinity
         }
@@ -36,16 +26,17 @@ function requestLocationAsync() {
 Pebble.addEventListener("ready",
     function(e) {
         console.log("JS starting...");
-            
-//        latitude  = localStorage.getItem("latitude");
-//        longitude = localStorage.getItem("longitude");
-//        console.log("Retrieved from localStorage: latitude=" + latitude + ", longitude=" + longitude);
+        console.log(e.type);      
+     
+        latitude  = localStorage.getItem("latitude");
+        longitude = localStorage.getItem("longitude");
+        console.log("Retrieved from localStorage: latitude=" + latitude + ", longitude=" + longitude);
         
         // Call first time when starting:
         requestLocationAsync();
         
         // Schedule periodic position poll every X minutes:
-        setInterval(function() {requestLocationAsync();}, 30*1000); //15*60*1000); 
+        setInterval(function() {requestLocationAsync();}, 30*60*1000);
     }
 );
 
@@ -64,23 +55,15 @@ function sendToWatch() {
         console.log("  sunset      = " + sunset.getHours()  + ":" + sunset.getMinutes());
     
     Pebble.sendAppMessage( 
-        {"solarOffset"    : solarOffset,
-         "sunriseHours"   : sunrise.getHours(),
-         "sunriseMinutes" : sunrise.getMinutes(),
-         "sunsetHours"    : sunset.getHours(),
-         "sunsetMinutes"  : sunset.getMinutes()},
+        {"SOLAR_OFFSET"    : solarOffset,
+         "SUNRISE_HOURS"   : sunrise.getHours(),
+         "SUNRISE_MINUTES" : sunrise.getMinutes(),
+         "SUNSET_HOURS"    : sunset.getHours(),
+         "SUNSET_MINUTES"  : sunset.getMinutes()},
       function(e) { console.log("Successfully delivered message with transactionId="   + e.data.transactionId); },
       function(e) { console.log("Unsuccessfully delivered message with transactionId=" + e.data.transactionId);}
     );
-}
 
-function locationSuccessLo(position) {
-    console.log("Location success - Low accuracy");
-    locationSuccess(position);
-}
-function locationSuccessHi(position) {
-    console.log("Location success - High accuracy");
-    locationSuccess(position);
 }
 function locationSuccess(position) {
     var lastLatitude  = latitude;
@@ -97,38 +80,31 @@ function locationSuccess(position) {
         calculateSunData();   
         sendToWatch();    
         applicationStarting = false;
-    } else if (true)
-//Math.abs(latitude - lastLatitude) > 0.01 || Math.abs(longitude - lastLongitude) > 0.01) { // if location change is significant
+    } else if (Math.abs(latitude - lastLatitude) > 0.01 || Math.abs(longitude - lastLongitude) > 0.01) { // if location change is significant
         calculateSunData();   
         sendToWatch();  
     }
-    
 }
 
-function locationErrorLo(error) {
-    console.log("Location error - Low accuracy");
-    locationError(error);
-}
-function locationErrorHi(error) {
-    console.log("Location error - High accuracy");
-    locationError(error);
-}
 function locationError(error) {
-    console.log("navigator.geolocation.getCurrentPosition() returned error " + error.code);
+    var errorText;
+    
     switch(error.code) {
         case error.PERMISSION_DENIED:
-            console.log("  Permission denied.");
+            errorText = "Permission denied";
             break;
         case error.POSITION_UNAVAILABLE:
-            console.log("  Position unavailable.");
+            errorText = "Position unavailable";
             break;
         case error.TIMEOUT:
-            console.log("  Timeout.");
+            errorText = "Timeout";
             break;
         case error.UNKNOWN_ERROR:
-            console.log("  Unknown error.");
+            errorText = "Unknown error";
             break;
     }    
+    
+    console.log("navigator.geolocation.getCurrentPosition() returned error " + error.code + ": " + errorText);
     
     if (applicationStarting) {
         // use last cached location if available
@@ -139,10 +115,6 @@ function locationError(error) {
 }
 
 function calculateSunData() {
-    // Test location:
-    //latitude  = 54.69922
-    //longitude = 25.213801;
-    
     if (latitude && longitude) {
         var times = SunCalc.getTimes(new Date(), latitude, longitude);
         sunrise = times.sunrise;

@@ -1,27 +1,16 @@
 {
     "appKeys": {
-        "battery_status": 7,
-        "daylight_savings": 8,
-        "digital_display": 4,
-        "hour_numbers": 5,
-        "latitude": 1,
-        "longitude": 2,
-        "moon_phase": 6,
-        "second_hand": 3,
-        "solarOffset": 12,
-        "sunriseHours": 13,
-        "sunriseMinutes": 14,
-        "sunsetHours": 15,
-        "sunsetMinutes": 16,
-        "timezoneOffset": 11,
-        "tz_bool": 9,
-        "tz_offset": 10
+        "SOLAR_OFFSET": 12,
+        "SUNRISE_HOURS": 13,
+        "SUNRISE_MINUTES": 14,
+        "SUNSET_HOURS": 15,
+        "SUNSET_MINUTES": 16
     },
     "capabilities": [
         "location"
     ],
     "companyName": "bhakterija",
-    "enableMultiJS": false,
+    "enableMultiJS": true,
     "longName": "Solar Watch",
     "projectType": "native",
     "resources": {
@@ -37,8 +26,7 @@
     "sdkVersion": "3",
     "shortName": "Solar Watch",
     "targetPlatforms": [
-        "aplite",
-        "basalt"
+        "aplite"
     ],
     "uuid": "89cf7751-1be0-4811-973e-a24f9961b7c6",
     "versionLabel": "1.1",

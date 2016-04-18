@@ -136,7 +136,7 @@ static void send_request(int command) {
 
 static void update_time() {
     
-    APP_LOG(APP_LOG_LEVEL_DEBUG, "update_time()");
+    //APP_LOG(APP_LOG_LEVEL_DEBUG, "update_time()");
     
     clock_time_t = time(NULL);
     clock_time_tm = *localtime(&clock_time_t);
@@ -183,8 +183,8 @@ static void update_time() {
     layer_mark_dirty(sunlight_layer);
     layer_mark_dirty(sunrise_sunset_text_layer);
     
-    APP_LOG(APP_LOG_LEVEL_DEBUG, "    clock time:   %d:%d", clock_time_tm.tm_hour,   clock_time_tm.tm_min);
-    APP_LOG(APP_LOG_LEVEL_DEBUG, "    solar time:   %d:%d", solar_time_tm.tm_hour,   solar_time_tm.tm_min); 
+    //APP_LOG(APP_LOG_LEVEL_DEBUG, "    clock time:   %d:%d", clock_time_tm.tm_hour,   clock_time_tm.tm_min);
+    //APP_LOG(APP_LOG_LEVEL_DEBUG, "    solar time:   %d:%d", solar_time_tm.tm_hour,   solar_time_tm.tm_min); 
 
     
     //char sunrise_str_tmp[15];
@@ -196,7 +196,7 @@ static void update_time() {
 }
 
 static void handle_time_tick(struct tm *tick_time, TimeUnits units_changed) {
-    APP_LOG(APP_LOG_LEVEL_DEBUG, "handle_time_tick()");    
+    //APP_LOG(APP_LOG_LEVEL_DEBUG, "handle_time_tick()");    
     update_time();
 }
 
@@ -220,8 +220,8 @@ void in_received_handler(DictionaryIterator *received, void *ctx) {
     Tuple *sunset_hours_tuple    = dict_find(received, SUNSET_HOURS);
     Tuple *sunset_minutes_tuple  = dict_find(received, SUNSET_MINUTES);
    
-    // Does BZZZ. Disabled for now
-    //vibes_short_pulse();
+    // Does BZZZ.
+    vibes_short_pulse();
     
     APP_LOG(APP_LOG_LEVEL_DEBUG, "Received from phone:");
 
@@ -330,12 +330,12 @@ static void update_battery_percentage(BatteryChargeState c) {
         int battery_level_int = c.charge_percent;
         snprintf(battery_level_string, 4, "%d%%", battery_level_int);
         layer_mark_dirty(battery_layer);
-        APP_LOG(APP_LOG_LEVEL_DEBUG, "Battery change: battery_layer marked dirty...");
+        //APP_LOG(APP_LOG_LEVEL_DEBUG, "Battery change: battery_layer marked dirty...");
     }
 }
 
 static void face_layer_update_proc(Layer *layer, GContext *ctx) {
-    APP_LOG(APP_LOG_LEVEL_DEBUG, "face_layer_update_proc()");
+    //APP_LOG(APP_LOG_LEVEL_DEBUG, "face_layer_update_proc()");
     
     //update_time();
     
@@ -528,7 +528,7 @@ static void battery_layer_update_proc(Layer* layer, GContext* ctx) {
 }
 
 static void sunlight_layer_update_proc(Layer* layer, GContext* ctx) {
-    APP_LOG(APP_LOG_LEVEL_DEBUG, "sunlight_layer_update_proc()");
+    //APP_LOG(APP_LOG_LEVEL_DEBUG, "sunlight_layer_update_proc()");
     
     if (sunrise_time && sunset_time) {   
         GRect bounds = layer_get_bounds(layer);
@@ -568,7 +568,7 @@ static void sunlight_layer_update_proc(Layer* layer, GContext* ctx) {
 }
 
 static void sunrise_sunset_text_layer_update_proc(Layer* layer, GContext* ctx) {
-    APP_LOG(APP_LOG_LEVEL_DEBUG, "sunrise_sunset_text_layer_update_proc()"); 
+    //APP_LOG(APP_LOG_LEVEL_DEBUG, "sunrise_sunset_text_layer_update_proc()"); 
         
     GRect bounds = layer_get_bounds(layer);
     GPoint center = grect_center_point(&bounds);     
@@ -713,7 +713,8 @@ static void init(void) {
     
     battery_state_service_subscribe(update_battery_percentage);
     
-    app_message_open(app_message_inbox_size_maximum(),app_message_outbox_size_maximum());
+    //app_message_open(app_message_inbox_size_maximum(), app_message_outbox_size_maximum());
+    app_message_open(256, 256);
     
     window = window_create();
     window_set_window_handlers(window, (WindowHandlers) {
@@ -748,8 +749,8 @@ int main(void) {
     init();
     
     APP_LOG(APP_LOG_LEVEL_DEBUG, "Done initializing, pushed window: %p", window);
-    APP_LOG(APP_LOG_LEVEL_DEBUG, "Max inbox size:  %d.", (int) app_message_inbox_size_maximum());
-    APP_LOG(APP_LOG_LEVEL_DEBUG, "Max outbox size: %d.", (int) app_message_outbox_size_maximum());
+    //APP_LOG(APP_LOG_LEVEL_DEBUG, "Max inbox size:  %d.", (int) app_message_inbox_size_maximum());
+    //APP_LOG(APP_LOG_LEVEL_DEBUG, "Max outbox size: %d.", (int) app_message_outbox_size_maximum());
     
     app_event_loop();
     deinit();
