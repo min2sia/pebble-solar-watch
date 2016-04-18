@@ -21,21 +21,24 @@
         "location"
     ],
     "companyName": "bhakterija",
+    "enableMultiJS": false,
     "longName": "Solar Watch",
     "projectType": "native",
     "resources": {
         "media": [
             {
                 "file": "images/solar-watch.png",
+                "menuIcon": true,
                 "name": "IMAGE_SCREENSHOT",
-                "type": "png"
+                "type": "bitmap"
             }
         ]
     },
     "sdkVersion": "3",
     "shortName": "Solar Watch",
     "targetPlatforms": [
-        "aplite"
+        "aplite",
+        "basalt"
     ],
     "uuid": "89cf7751-1be0-4811-973e-a24f9961b7c6",
     "versionLabel": "1.1",

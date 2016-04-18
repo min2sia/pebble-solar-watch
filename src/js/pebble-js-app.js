@@ -11,29 +11,41 @@ var applicationStarting = true;
 // 2. Periodic update. Data is sent only if location is available and location has changed considerably
 
 function requestLocationAsync() {
+    console.log("requestLocationAsync()");
     navigator.geolocation.getCurrentPosition(
-        locationSuccess,
-        locationError,
+        locationSuccessLo,
+        locationErrorLo,
         {
+            enableHighAccuracy: false, // default
             timeout: 10000, 
             maximumAge: Infinity
         }
-    );    
+    );
+    
+    navigator.geolocation.getCurrentPosition(
+        locationSuccessHi,
+        locationErrorHi,
+        {
+            enableHighAccuracy: true, // default
+            timeout: 10000, 
+            maximumAge: Infinity
+        }
+    );
 }
 
 Pebble.addEventListener("ready",
     function(e) {
         console.log("JS starting...");
             
-        latitude  = localStorage.getItem("latitude");
-        longitude = localStorage.getItem("longitude");
-        console.log("Retrieved from localStorage: latitude=" + latitude + ", longitude=" + longitude);
+//        latitude  = localStorage.getItem("latitude");
+//        longitude = localStorage.getItem("longitude");
+//        console.log("Retrieved from localStorage: latitude=" + latitude + ", longitude=" + longitude);
         
         // Call first time when starting:
         requestLocationAsync();
         
         // Schedule periodic position poll every X minutes:
-        setInterval(function() {requestLocationAsync();}, 15*60*1000); 
+        setInterval(function() {requestLocationAsync();}, 30*1000); //15*60*1000); 
     }
 );
 
@@ -62,7 +74,14 @@ function sendToWatch() {
     );
 }
 
-
+function locationSuccessLo(position) {
+    console.log("Location success - Low accuracy");
+    locationSuccess(position);
+}
+function locationSuccessHi(position) {
+    console.log("Location success - High accuracy");
+    locationSuccess(position);
+}
 function locationSuccess(position) {
     var lastLatitude  = latitude;
     var lastLongitude = longitude;
@@ -78,11 +97,21 @@ function locationSuccess(position) {
         calculateSunData();   
         sendToWatch();    
         applicationStarting = false;
-    } else if (Math.abs(latitude - lastLatitude) > 0.01 || Math.abs(longitude - lastLongitude) > 0.01) { // if location change is significant
+    } else if (true)
+//Math.abs(latitude - lastLatitude) > 0.01 || Math.abs(longitude - lastLongitude) > 0.01) { // if location change is significant
         calculateSunData();   
         sendToWatch();  
     }
     
+}
+
+function locationErrorLo(error) {
+    console.log("Location error - Low accuracy");
+    locationError(error);
+}
+function locationErrorHi(error) {
+    console.log("Location error - High accuracy");
+    locationError(error);
 }
 function locationError(error) {
     console.log("navigator.geolocation.getCurrentPosition() returned error " + error.code);

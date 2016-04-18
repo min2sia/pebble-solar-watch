@@ -553,6 +553,16 @@ static void sunlight_layer_update_proc(Layer* layer, GContext* ctx) {
         gpath_draw_outline(ctx, sun_path);
         gpath_draw_filled(ctx, sun_path);
 
+        // draw dotted line:
+        for (int i=center.x; i<300; i++){
+            if (i % 2 == 0){
+                graphics_context_set_stroke_color(ctx, GColorBlack);    
+            } else {
+                graphics_context_set_stroke_color(ctx, GColorWhite);    
+            }         
+            graphics_draw_pixel(ctx, GPoint(i, i));      
+        }
+        
         gpath_destroy(sun_path);
     }
 }
