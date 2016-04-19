@@ -164,12 +164,6 @@ static void update_time() {
     // and apply solar offset, so it displays symmetric solar night
     sunrise_time += solar_offset / 3600.0;
     sunset_time  += solar_offset / 3600.0;
-    
-    //char txt[5];      
-    //ftoa(txt, sunrise_time, 2);    
-    //APP_LOG(APP_LOG_LEVEL_DEBUG, "    sunrise time:   %s", txt);
-    //ftoa(txt, sunset_time, 2);    
-    //APP_LOG(APP_LOG_LEVEL_DEBUG, "    sunset time:    %s", txt);
       
     if ((current_sunrise_sunset_day != clock_time_tm.tm_mday)) {   
           
@@ -182,17 +176,6 @@ static void update_time() {
     layer_mark_dirty(hand_layer);
     layer_mark_dirty(sunlight_layer);
     layer_mark_dirty(sunrise_sunset_text_layer);
-    
-    //APP_LOG(APP_LOG_LEVEL_DEBUG, "    clock time:   %d:%d", clock_time_tm.tm_hour,   clock_time_tm.tm_min);
-    //APP_LOG(APP_LOG_LEVEL_DEBUG, "    solar time:   %d:%d", solar_time_tm.tm_hour,   solar_time_tm.tm_min); 
-
-    
-    //char sunrise_str_tmp[15];
-    //char sunset_str_tmp[15];
-    //ftoa(sunrise_str_tmp, sunrise_time, 7);
-    //ftoa(sunset_str_tmp, sunset_time, 7);
-    //APP_LOG(APP_LOG_LEVEL_DEBUG, "    sunrise time: %d:%d", sunrise_time_tm.tm_hour, sunrise_time_tm.tm_min);
-    //APP_LOG(APP_LOG_LEVEL_DEBUG, "    sunset time:  %d:%d", sunset_time_tm.tm_hour,  sunset_time_tm.tm_min);
 }
 
 static void handle_time_tick(struct tm *tick_time, TimeUnits units_changed) {
@@ -527,6 +510,59 @@ static void battery_layer_update_proc(Layer* layer, GContext* ctx) {
     }
 }
 
+static void draw_dotted_line(GContext* ctx, GPoint from, GPoint to) {
+    int x_pixels;
+    int y_pixels;    
+    x_pixels = my_abs(from.x - to.x) + 1;
+    y_pixels = my_abs(from.y - to.y) + 1;
+    
+    int x_direction = 1;
+    int y_direction = 1;    
+    if (from.x > to.x){
+        x_direction = -1;
+    }
+    if (from.y > to.y){
+        y_direction = -1;
+    }
+
+    int j = 0;
+    int x = 0;
+    int y = 0;
+    if (x_pixels >= y_pixels) { 
+        // there are more pixels to draw on X axis, use X as major axis for optimal pixel density 
+        for (int i=0; i<x_pixels; i++) {            
+            // Approximate j:
+            j = (int)round((double)(y_pixels-1) * ((double)i / (double)x_pixels)); 
+            
+            x = from.x + (i * x_direction);
+            y = from.y + (j * y_direction);
+            
+            if (i % 2 == 0){
+                graphics_context_set_stroke_color(ctx, GColorBlack);    
+            } else {
+                graphics_context_set_stroke_color(ctx, GColorWhite);    
+            }
+            graphics_draw_pixel(ctx, GPoint(x, y));
+        }
+    } else { 
+        // there are more pixels to draw on Y axis, use Y as major axis for optimal pixel density 
+        for (int i=0; i<y_pixels; i++) {            
+            // Approximate j:
+            j = (int)round((double)(x_pixels-1) * ((double)i / (double)y_pixels));
+            
+            y = from.y + (i * y_direction);
+            x = from.x + (j * x_direction);
+            
+            if (i % 2 == 0){
+                graphics_context_set_stroke_color(ctx, GColorBlack);    
+            } else {
+                graphics_context_set_stroke_color(ctx, GColorWhite);    
+            }
+            graphics_draw_pixel(ctx, GPoint(x, y));
+        }
+    }   
+}
+
 static void sunlight_layer_update_proc(Layer* layer, GContext* ctx) {
     //APP_LOG(APP_LOG_LEVEL_DEBUG, "sunlight_layer_update_proc()");
     
@@ -534,16 +570,15 @@ static void sunlight_layer_update_proc(Layer* layer, GContext* ctx) {
         GRect bounds = layer_get_bounds(layer);
         GPoint center = grect_center_point(&bounds);
     
-        //TODO: works somewhat ok, but could be more accurate
-        //APP_LOG(APP_LOG_LEVEL_DEBUG, "sun_path_info.points[1].x = %d", sun_path_info.points[1].x);
         sun_path_info.points[1].x = -(int16_t)(my_sin(sunrise_time/24 * M_PI * 2) * 120);
         //APP_LOG(APP_LOG_LEVEL_DEBUG, "sun_path_info.points[1].x = %d", sun_path_info.points[1].x);
     
         sun_path_info.points[1].y = (int16_t)(my_cos(sunrise_time/24 * M_PI * 2) * 120);
-        //APP_LOG(APP_LOG_LEVEL_DEBUG, "sun_path_info.points[1].y = %d", sun_path_info.points[1].y);
+        APP_LOG(APP_LOG_LEVEL_DEBUG, "sunrise point[1] = %d, %d", sun_path_info.points[1].x, sun_path_info.points[1].y);
 
         sun_path_info.points[4].x = -(int16_t)(my_sin(sunset_time/24 * M_PI * 2) * 120);
         sun_path_info.points[4].y =  (int16_t)(my_cos(sunset_time/24 * M_PI * 2) * 120);
+        APP_LOG(APP_LOG_LEVEL_DEBUG, "sunset point[4] = %d, %d", sun_path_info.points[4].x, sun_path_info.points[4].y);
 
         struct GPath *sun_path;
         sun_path = gpath_create(&sun_path_info);
@@ -552,18 +587,46 @@ static void sunlight_layer_update_proc(Layer* layer, GContext* ctx) {
         gpath_move_to(sun_path, center);
         gpath_draw_outline(ctx, sun_path);
         gpath_draw_filled(ctx, sun_path);
-
-        // draw dotted line:
-        for (int i=center.x; i<300; i++){
-            if (i % 2 == 0){
-                graphics_context_set_stroke_color(ctx, GColorBlack);    
-            } else {
-                graphics_context_set_stroke_color(ctx, GColorWhite);    
-            }         
-            graphics_draw_pixel(ctx, GPoint(i, i));      
-        }
-        
         gpath_destroy(sun_path);
+
+        
+        /* 
+        //  Draw dotted lines splitting night and day periods into 3 parts (vata, pitta, kapha)
+        */
+        //char sunrise_time_txt[5]; ftoa(sunrise_time_txt, sunrise_time, 2);
+        //char sunset_time_txt[5]; ftoa(sunset_time_txt, sunset_time, 2);        
+        //APP_LOG(APP_LOG_LEVEL_DEBUG, "sunrise_time: %s,  sunset_time: %s", sunrise_time_txt, sunset_time_txt);        
+
+        double dosa_len = 0; 
+        GPoint dosa_point;
+        double dosa_time = 0;
+        
+        dosa_len = (sunset_time - sunrise_time) / 3; // day        
+        // 1. Day Kapha/Pitta line
+        dosa_time = sunrise_time+dosa_len;
+        dosa_point.x = center.x - (int16_t)(my_sin(dosa_time/24 * M_PI * 2) * 120);
+        dosa_point.y = center.y + (int16_t)(my_cos(dosa_time/24 * M_PI * 2) * 120);
+        //APP_LOG(APP_LOG_LEVEL_DEBUG, "dosa2 = %d, %d", dosa_point.x, dosa_point.y);
+        draw_dotted_line(ctx, center, dosa_point); 
+        
+        // 2. Day Pitta/Vata line
+        dosa_time = sunrise_time + (dosa_len * 2);
+        dosa_point.x = center.x - (int16_t)(my_sin(dosa_time/24 * M_PI * 2) * 120);
+        dosa_point.y = center.y + (int16_t)(my_cos(dosa_time/24 * M_PI * 2) * 120);
+        draw_dotted_line(ctx, center, dosa_point); 
+        
+        dosa_len = (24 - sunset_time + sunrise_time) / 3; // night
+        // 3. Night Kapha/Pitta line
+        dosa_time = sunset_time + dosa_len;
+        dosa_point.x = center.x - (int16_t)(my_sin(dosa_time/24 * M_PI * 2) * 120);
+        dosa_point.y = center.y + (int16_t)(my_cos(dosa_time/24 * M_PI * 2) * 120);
+        draw_dotted_line(ctx, center, dosa_point); 
+        
+        // 4. Night Pitta/Vata line
+        dosa_time = sunrise_time - dosa_len;
+        dosa_point.x = center.x - (int16_t)(my_sin(dosa_time/24 * M_PI * 2) * 120);
+        dosa_point.y = center.y + (int16_t)(my_cos(dosa_time/24 * M_PI * 2) * 120);
+        draw_dotted_line(ctx, center, dosa_point); 
     }
 }
 
