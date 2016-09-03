@@ -510,25 +510,40 @@ static void services_layer_update_proc(Layer* layer, GContext* ctx) {
         draw_outlined_text(ctx,
         battery_level_string,
         fonts_get_system_font(FONT_KEY_GOTHIC_14),
-        GRect(center.x - 15, bounds.size.h - 14, 30, 14),
+        GRect(center.x - 12, bounds.size.h - 14, 30, 14),
         GTextOverflowModeWordWrap,
         GTextAlignmentCenter,
         1,
         true);
     }
     
-    //TODO: draw bluetooth icon here
-    if (setting_connection_status) {
-        char *connection_status_string = current_connection_available ? "B" : "X";
-        draw_outlined_text(ctx,
-        connection_status_string,
-        fonts_get_system_font(FONT_KEY_GOTHIC_14),
-        GRect(bounds.size.w - 15, bounds.size.h - 35, 15, 14),
-        GTextOverflowModeWordWrap,
-        GTextAlignmentCenter,
-        1,
-        true);
+    if (setting_connection_status && current_connection_available) {
+        // Draw bluetooth icon
+        int start_x = bounds.size.w - 13;
+        int start_y = bounds.size.h - 35;
+        graphics_context_set_stroke_color(ctx, GColorWhite);
+        graphics_draw_line(ctx, GPoint(start_x+0, start_y+3), GPoint(start_x+6, start_y+9));
+        graphics_draw_line(ctx, GPoint(start_x+6, start_y+9), GPoint(start_x+3, start_y+12));        
+        graphics_draw_line(ctx, GPoint(start_x+3, start_y+12), GPoint(start_x+3, start_y+0));
+        graphics_draw_line(ctx, GPoint(start_x+3, start_y+0), GPoint(start_x+6, start_y+3));
+        graphics_draw_line(ctx, GPoint(start_x+6, start_y+3), GPoint(start_x+0, start_y+9));
     }  
+    
+    if (true) { //TODO: current_location_available
+        // Draw GPS icon
+        int start_x = 5;
+        int start_y = bounds.size.h - 35;
+        graphics_context_set_stroke_color(ctx, GColorWhite);
+        graphics_draw_circle(ctx, GPoint(start_x+5, start_y+5), 2);
+        graphics_draw_arc(
+            ctx, 
+            GRect(start_x, start_y, 11, 11), 
+            GOvalScaleModeFitCircle, //GOvalScaleModeFillCircle, 
+            DEG_TO_TRIGANGLE(-100),
+            DEG_TO_TRIGANGLE(100));
+        graphics_draw_line(ctx, GPoint(start_x+0, start_y+5), GPoint(start_x+5, start_y+13));
+        graphics_draw_line(ctx, GPoint(start_x+11, start_y+5), GPoint(start_x+5, start_y+13));
+    }
 }
 #endif
 
