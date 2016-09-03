@@ -6,7 +6,9 @@ static Layer *face_layer;
 static Layer *hand_layer;
 static Layer *sunlight_layer;
 static Layer *sunrise_sunset_text_layer;
-static Layer *battery_layer;
+#if defined(PBL_RECT)
+    static Layer *services_layer; // battery percentage, phone connection and location availability
+#endif
 
 time_t clock_time_t = 0;
 time_t solar_time_t = 0;
@@ -19,21 +21,29 @@ struct tm sunset_time_tm  = { .tm_hour = 0, .tm_min = 0 };
 int32_t solar_offset;
 int current_sunrise_sunset_day = -1;
 
+#if defined(PBL_RECT)
 int current_battery_charge = -1;
 char *battery_level_string = "100%";
+#endif
+bool current_connection_available = false;
+bool current_location_available = false;
 
 bool setting_digital_display = true;
 bool setting_hour_numbers = true;
+#if defined(PBL_RECT)
 bool setting_battery_status = true;
+#endif
+bool setting_connection_status = true;
+bool setting_location_status = true;
 
-// Since compilation fails using the standard `atof',
-// the following `myatof' implementation taken from:
-// 09-May-2009 Tom Van Baak (tvb) www.LeapSecond.com
-// 
 #define white_space(c) ((c) == ' ' || (c) == '\t')
 #define valid_digit(c) ((c) >= '0' && (c) <= '9')
 double myatof (const char *p)
 {
+// Since compilation fails using the standard `atof',
+// the following `myatof' implementation taken from:
+// 09-May-2009 Tom Van Baak (tvb) www.LeapSecond.com
+    
     int frac;
     double sign, value, scale;
     // Skip leading white space, if any.
@@ -90,11 +100,11 @@ double myatof (const char *p)
     return sign * (frac ? (value / scale) : (value * scale));
 }
 
+void ftoa(char* str, double val, int precision) {
 //
 // snprintf does not support double: http://forums.getpebble.com/discussion/8743/petition-please-support-float-double-for-snprintf
 // workaround from MatthewClark
-//
-void ftoa(char* str, double val, int precision) {
+//    
     //  start with positive/negative
     if (val < 0) {
         *(str++) = '-';
@@ -183,25 +193,14 @@ static void handle_time_tick(struct tm *tick_time, TimeUnits units_changed) {
     update_time();
 }
 
-/******************
-    APPMESSAGE STUFF
-*******************/
-enum {
-    SOLAR_OFFSET = 12,
-    SUNRISE_HOURS = 13,
-    SUNRISE_MINUTES = 14,
-    SUNSET_HOURS = 15,
-    SUNSET_MINUTES = 16
-};
-
 void in_received_handler(DictionaryIterator *received, void *ctx) {
-    APP_LOG(APP_LOG_LEVEL_DEBUG, "in_received_handler()");
+    //APP_LOG(APP_LOG_LEVEL_DEBUG, "in_received_handler()");
 
-    Tuple *solar_offset_tuple    = dict_find(received, SOLAR_OFFSET);
-    Tuple *sunrise_hours_tuple   = dict_find(received, SUNRISE_HOURS);
-    Tuple *sunrise_minutes_tuple = dict_find(received, SUNRISE_MINUTES);
-    Tuple *sunset_hours_tuple    = dict_find(received, SUNSET_HOURS);
-    Tuple *sunset_minutes_tuple  = dict_find(received, SUNSET_MINUTES);
+    Tuple *solar_offset_tuple    = dict_find(received, MESSAGE_KEY_SOLAR_OFFSET);
+    Tuple *sunrise_hours_tuple   = dict_find(received, MESSAGE_KEY_SUNRISE_HOURS);
+    Tuple *sunrise_minutes_tuple = dict_find(received, MESSAGE_KEY_SUNRISE_MINUTES);
+    Tuple *sunset_hours_tuple    = dict_find(received, MESSAGE_KEY_SUNSET_HOURS);
+    Tuple *sunset_minutes_tuple  = dict_find(received, MESSAGE_KEY_SUNSET_MINUTES);
    
     // Does BZZZ.
     vibes_short_pulse();
@@ -210,19 +209,20 @@ void in_received_handler(DictionaryIterator *received, void *ctx) {
 
     if (solar_offset_tuple) {         
         solar_offset = solar_offset_tuple->value->int32;
-        APP_LOG(APP_LOG_LEVEL_DEBUG, "  solar offset: %d", (int)solar_offset);
     } 
     
     if (sunrise_hours_tuple && sunrise_minutes_tuple) {        
         sunrise_time_tm.tm_hour = sunrise_hours_tuple->value->int32;
         sunrise_time_tm.tm_min  = sunrise_minutes_tuple->value->int32;
-        APP_LOG(APP_LOG_LEVEL_DEBUG, "  sunrise: %d:%d", (int)sunrise_time_tm.tm_hour, (int)sunrise_time_tm.tm_min);
     }
     if (sunset_hours_tuple && sunset_minutes_tuple) {        
         sunset_time_tm.tm_hour = sunset_hours_tuple->value->int32;
         sunset_time_tm.tm_min  = sunset_minutes_tuple->value->int32;
-        APP_LOG(APP_LOG_LEVEL_DEBUG, "  sunset:  %d:%d", (int)sunset_time_tm.tm_hour, (int)sunset_time_tm.tm_min);
     }
+    
+    APP_LOG(APP_LOG_LEVEL_DEBUG, "  solar offset: %d", (int)solar_offset);
+    APP_LOG(APP_LOG_LEVEL_DEBUG, "  sunrise: %d:%d", (int)sunrise_time_tm.tm_hour, (int)sunrise_time_tm.tm_min);
+    APP_LOG(APP_LOG_LEVEL_DEBUG, "  sunset:  %d:%d", (int)sunset_time_tm.tm_hour, (int)sunset_time_tm.tm_min);
     
     update_time();
 }
@@ -308,14 +308,24 @@ static void draw_dot(GContext* ctx, GPoint center, int radius) {
     graphics_draw_circle(ctx, center, radius+1);
 }
 
+#if defined(PBL_RECT)
 static void update_battery_percentage(BatteryChargeState c) {
     if (setting_battery_status) {
         int battery_level_int = c.charge_percent;
-        snprintf(battery_level_string, 4, "%d%%", battery_level_int);
-        layer_mark_dirty(battery_layer);
-        //APP_LOG(APP_LOG_LEVEL_DEBUG, "Battery change: battery_layer marked dirty...");
+        snprintf(battery_level_string, 5, "%d%%", battery_level_int);
+        layer_mark_dirty(services_layer);
     }
 }
+
+static void app_connection_handler(bool connected) {
+    //APP_LOG(APP_LOG_LEVEL_INFO, "Pebble app is %sconnected", connected ? "" : "dis");
+    current_connection_available = connected;
+    if (!current_connection_available) {
+        vibes_short_pulse();
+    }
+    layer_mark_dirty(services_layer);
+}  
+#endif
 
 static void face_layer_update_proc(Layer *layer, GContext *ctx) {
     //APP_LOG(APP_LOG_LEVEL_DEBUG, "face_layer_update_proc()");
@@ -324,62 +334,65 @@ static void face_layer_update_proc(Layer *layer, GContext *ctx) {
     
     GRect bounds = layer_get_bounds(layer);
     GPoint center = grect_center_point(&bounds);  
+    int radius = center.x < center.y ? center.x : center.y;
     
     /*******************************
         DRAW PRIMITIVES FOR THIS LAYER
     *********************************/
     graphics_context_set_stroke_color(ctx, GColorBlack);
-    graphics_draw_circle(ctx, center, 68);
+    graphics_draw_circle(ctx, center, radius-4);
     graphics_context_set_stroke_color(ctx, GColorWhite);
-    graphics_draw_circle(ctx, center, 69);
-    // yes, I'm really doing this...
-    for (int i=70;i<72;i++) {
+    graphics_draw_circle(ctx, center, radius-3);
+    
+    for (int i=radius-2;i<radius;i++) {
         graphics_draw_circle(ctx, center, i);
     }
     center.y+=1;
-    for (int i=70;i<72;i++) {
+    for (int i=radius-2;i<radius;i++) {
         graphics_draw_circle(ctx, center, i);
     }
     center.y-=1;
     graphics_context_set_stroke_color(ctx, GColorBlack);
-    for (int i=72;i<120;i++) {
+    for (int i=radius;i<120;i++) {
         graphics_draw_circle(ctx, center, i);
     }
     center.y+=1;
-    for (int i=72;i<120;i++) {
+    for (int i=radius;i<120;i++) {
         graphics_draw_circle(ctx, center, i);
     }
     
     float rad_factor;
     float deg_step;
     
-    // draw sunrays
-    GPoint start_point;
-    GPoint end_point;
-    float current_rads;
-    float x;
-    float y;
-    int ray_length;
-    graphics_context_set_stroke_color(ctx, GColorWhite);  
-    rad_factor = M_PI / 180;
-    deg_step = 3;
-  
+    #if defined(PBL_RECT)
+        // draw sunrays
+        GPoint start_point;
+        GPoint end_point;
+        float current_rads;
+        float x;
+        float y;
+        int ray_length;
+        graphics_context_set_stroke_color(ctx, COLOR_FALLBACK(GColorYellow, GColorWhite));  
+        rad_factor = M_PI / 180;
+        deg_step = 3;
+      
     for (int i=-25;i<26;i++) {
         current_rads = rad_factor * (deg_step * (i - 30));
         
-        x = 73 * (my_cos(current_rads)) + 72;
-        y = 73 * (my_sin(current_rads)) + 84;
+        x = 73 * (my_cos(current_rads)) + center.x;
+        y = 73 * (my_sin(current_rads)) + center.y;
         start_point.x = (int16_t)x;
         start_point.y = (int16_t)y;
         
         ray_length = rand() % (int)(26 - my_abs(i)) / 2;
-        x = (80 + ray_length) * (my_cos(current_rads)) + 72;
-        y = (80 + ray_length) * (my_sin(current_rads)) + 84;
+        x = (80 + ray_length) * (my_cos(current_rads)) + center.x;
+        y = (80 + ray_length) * (my_sin(current_rads)) + center.y;
         end_point.x = (int16_t)x;
         end_point.y = (int16_t)y;
         
         graphics_draw_line(ctx, start_point, end_point);
     }
+    #endif
     
     rad_factor = M_PI / 180;
     
@@ -387,8 +400,8 @@ static void face_layer_update_proc(Layer *layer, GContext *ctx) {
     deg_step = 45;
     for (int i=0;i<8;i++) {
         float current_rads = rad_factor * (deg_step * i);
-        float x = 72 + 62 * (my_cos(current_rads));
-        float y = 84 + 62 * (my_sin(current_rads));
+        float x = center.x + (radius-10) * (my_cos(current_rads));     //float x = 72 + 62 * (my_cos(current_rads));
+        float y = center.y + (radius-10) * (my_sin(current_rads));    //float y = 84 + 62 * (my_sin(current_rads));
         GPoint current_point;
         current_point.x = (int16_t)x;
         current_point.y = (int16_t)y;
@@ -398,8 +411,8 @@ static void face_layer_update_proc(Layer *layer, GContext *ctx) {
     deg_step = 15;
     for (int i=0;i<24;i++) {
         float current_rads = rad_factor * (deg_step * i);
-        float x = 72 + 62 * (my_cos(current_rads));
-        float y = 84 + 62 * (my_sin(current_rads));
+        float x = center.x + (radius-10) * (my_cos(current_rads));
+        float y = center.y + (radius-10) * (my_sin(current_rads));
         GPoint current_point;
         current_point.x = (int16_t)x;
         current_point.y = (int16_t)y;
@@ -409,8 +422,8 @@ static void face_layer_update_proc(Layer *layer, GContext *ctx) {
     deg_step = 90;
     for (int i=0;i<4;i++) {
         float current_rads = rad_factor * (deg_step * i);
-        float x = 72 + 62 * (my_cos(current_rads));
-        float y = 84 + 62 * (my_sin(current_rads));
+        float x = center.x + (radius-10) * (my_cos(current_rads));
+        float y = center.y + (radius-10) * (my_sin(current_rads));
         GPoint current_point;
         current_point.x = (int16_t)x;
         current_point.y = (int16_t)y;
@@ -427,8 +440,8 @@ static void face_layer_update_proc(Layer *layer, GContext *ctx) {
         deg_step = 45;
         for (int i=0;i<8;i++) {
             float current_rads = rad_factor * (deg_step * i);
-            float x = 72 + 48 * (my_cos(current_rads));
-            float y = 84 + 48 * (my_sin(current_rads));
+            float x = center.x + (radius-24) * (my_cos(current_rads));
+            float y = center.y + (radius-24) * (my_sin(current_rads));
             GPoint current_point;
             current_point.x = (int16_t)x;
             current_point.y = (int16_t)y;
@@ -456,14 +469,16 @@ static void face_layer_update_proc(Layer *layer, GContext *ctx) {
     }
 }
 
-static const GPathInfo p_hour_hand_info = {
-    .num_points = 5,
-    .points = (GPoint []) {{3,12},{-3,12},{-2,-55},{0,-56},{2,-55}}
-};
 
 static void hand_layer_update_proc(Layer* layer, GContext* ctx) {
     GRect bounds = layer_get_bounds(layer);
     GPoint center = grect_center_point(&bounds);
+    int radius = center.x < center.y ? center.x : center.y;
+    int hand_length = radius - 19;
+    GPathInfo p_hour_hand_info = {
+        .num_points = 5,
+        .points = (GPoint []) {{3,12},{-3,12},{-2,-hand_length},{0,-(hand_length+1)},{2,-hand_length}}
+    };
     
     static GPath *p_hour_hand = NULL;
     
@@ -486,27 +501,66 @@ static void hand_layer_update_proc(Layer* layer, GContext* ctx) {
     draw_dot(ctx, center, 5);
 }
 
-GPathInfo sun_path_info = {
-    5,
-    (GPoint []) {
-        {0, 0},
-        {-73, +84}, //replaced by sunrise angle
-        {-73, +84}, //bottom left
-        {+73, +84}, //bottom right
-        {+73, +84}, //replaced by sunset angle
-    }
-};
-
-static void battery_layer_update_proc(Layer* layer, GContext* ctx) {
+#if defined(PBL_RECT)
+static void services_layer_update_proc(Layer* layer, GContext* ctx) {
+    GRect bounds = layer_get_bounds(layer);
+    GPoint center = grect_center_point(&bounds); 
+    
     if (setting_battery_status) {
         draw_outlined_text(ctx,
         battery_level_string,
         fonts_get_system_font(FONT_KEY_GOTHIC_14),
-        GRect(55, 153, 40, 40),
+        GRect(center.x - 15, bounds.size.h - 14, 30, 14),
         GTextOverflowModeWordWrap,
         GTextAlignmentCenter,
         1,
         true);
+    }
+    
+    //TODO: draw bluetooth icon here
+    if (setting_connection_status) {
+        char *connection_status_string = current_connection_available ? "B" : "X";
+        draw_outlined_text(ctx,
+        connection_status_string,
+        fonts_get_system_font(FONT_KEY_GOTHIC_14),
+        GRect(bounds.size.w - 15, bounds.size.h - 35, 15, 14),
+        GTextOverflowModeWordWrap,
+        GTextAlignmentCenter,
+        1,
+        true);
+    }  
+}
+#endif
+
+static void draw_dotted_line_b(GContext* ctx, GPoint from, GPoint to) {
+    int x = from.x;
+    int y = from.y;
+    int dx = abs(to.x - from.x);
+    int sx = from.x < to.x ? 1 : -1;
+    int dy = abs(to.y - from.y); 
+    int sy = from.y < to.y ? 1 : -1; 
+    int err = (dx > dy ? dx : -dy)/2; 
+    int e2;
+ 
+    for(;;) {
+        if ((dx > dy && x % 2 == 0) || (dy >= dx && y % 2 == 0)) {
+            graphics_context_set_stroke_color(ctx, GColorBlack);    
+        } else {
+            graphics_context_set_stroke_color(ctx, GColorWhite);    
+        }
+        graphics_draw_pixel(ctx, GPoint(x, y));
+        if (x == to.x && y == to.y) {
+            break;
+        }
+        e2 = err;
+        if (e2 > -dx) { 
+            err -= dy; 
+            x += sx; 
+        }
+        if (e2 < dy) { 
+            err += dx; 
+            y += sy; 
+        }
     }
 }
 
@@ -565,20 +619,32 @@ static void draw_dotted_line(GContext* ctx, GPoint from, GPoint to) {
 
 static void sunlight_layer_update_proc(Layer* layer, GContext* ctx) {
     //APP_LOG(APP_LOG_LEVEL_DEBUG, "sunlight_layer_update_proc()");
+    //APP_LOG(APP_LOG_LEVEL_DEBUG, "sunrise_time: %d, sunset_time: %d", (int)sunrise_time, (int)sunset_time);
     
     if (sunrise_time && sunset_time) {   
         GRect bounds = layer_get_bounds(layer);
         GPoint center = grect_center_point(&bounds);
     
+        GPathInfo sun_path_info = {
+            5,
+            (GPoint []) {
+                {0, 0},
+                {-73, +84}, //replaced by sunrise angle
+                {-73, +84}, //bottom left
+                {+73, +84}, //bottom right
+                {+73, +84}, //replaced by sunset angle
+            }
+        };
+        
         sun_path_info.points[1].x = -(int16_t)(my_sin(sunrise_time/24 * M_PI * 2) * 120);
         //APP_LOG(APP_LOG_LEVEL_DEBUG, "sun_path_info.points[1].x = %d", sun_path_info.points[1].x);
     
         sun_path_info.points[1].y = (int16_t)(my_cos(sunrise_time/24 * M_PI * 2) * 120);
-        APP_LOG(APP_LOG_LEVEL_DEBUG, "sunrise point[1] = %d, %d", sun_path_info.points[1].x, sun_path_info.points[1].y);
+        //APP_LOG(APP_LOG_LEVEL_DEBUG, "sunrise point[1] = %d, %d", sun_path_info.points[1].x, sun_path_info.points[1].y);
 
         sun_path_info.points[4].x = -(int16_t)(my_sin(sunset_time/24 * M_PI * 2) * 120);
         sun_path_info.points[4].y =  (int16_t)(my_cos(sunset_time/24 * M_PI * 2) * 120);
-        APP_LOG(APP_LOG_LEVEL_DEBUG, "sunset point[4] = %d, %d", sun_path_info.points[4].x, sun_path_info.points[4].y);
+        //APP_LOG(APP_LOG_LEVEL_DEBUG, "sunset point[4] = %d, %d", sun_path_info.points[4].x, sun_path_info.points[4].y);
 
         struct GPath *sun_path;
         sun_path = gpath_create(&sun_path_info);
@@ -607,7 +673,7 @@ static void sunlight_layer_update_proc(Layer* layer, GContext* ctx) {
         dosa_point.x = center.x - (int16_t)(my_sin(dosa_time/24 * M_PI * 2) * 120);
         dosa_point.y = center.y + (int16_t)(my_cos(dosa_time/24 * M_PI * 2) * 120);
         //APP_LOG(APP_LOG_LEVEL_DEBUG, "dosa2 = %d, %d", dosa_point.x, dosa_point.y);
-        draw_dotted_line(ctx, center, dosa_point); 
+        draw_dotted_line_b(ctx, center, dosa_point); 
         
         // 2. Day Pitta/Vata line
         dosa_time = sunrise_time + (dosa_len * 2);
@@ -620,7 +686,7 @@ static void sunlight_layer_update_proc(Layer* layer, GContext* ctx) {
         dosa_time = sunset_time + dosa_len;
         dosa_point.x = center.x - (int16_t)(my_sin(dosa_time/24 * M_PI * 2) * 120);
         dosa_point.y = center.y + (int16_t)(my_cos(dosa_time/24 * M_PI * 2) * 120);
-        draw_dotted_line(ctx, center, dosa_point); 
+        draw_dotted_line_b(ctx, center, dosa_point); 
         
         // 4. Night Pitta/Vata line
         dosa_time = sunrise_time - dosa_len;
@@ -636,30 +702,54 @@ static void sunrise_sunset_text_layer_update_proc(Layer* layer, GContext* ctx) {
     GRect bounds = layer_get_bounds(layer);
     GPoint center = grect_center_point(&bounds);     
     
-    static char sunrise_text[] = "00:00";
-    static char sunset_text[] = "00:00";
-    static char clock_time_text[] = "00:00";
-    static char solar_time_text[] = "00:00";
+    static char sunrise_text[] = "00:00   ";
+    static char sunset_text[] = "00:00   ";
+    static char clock_time_text[] = "00:00   ";
+    static char solar_time_text[] = "00:00   ";
+    #if defined(PBL_RECT)
     static char month_text[] = "Jan";
     static char day_text[] = "00";
+    #endif
     char *time_format;
     
     if (clock_is_24h_style()) {
         time_format = "%H:%M";
     } else {
-        time_format = "%l:%M";
+        time_format = "%l:%M %P";
     }
     char *month_format = "%b";
     char *day_format = "%e";
     char *ellipsis = ".....";
     
-    // draw current time
+    
+    // draw current solar and clock time
     if (setting_digital_display) {   
-        strftime(solar_time_text, sizeof(solar_time_text), time_format, &solar_time_tm);
+        int solar_time_h = 30; // font height
+        int solar_time_x;
+        int solar_time_y = (int)(center.y / 2);
+        int solar_time_w;
+        
+        int clock_time_h = 28; // font height
+        int clock_time_x;
+        int clock_time_y = center.y + (int)(center.y / 10);
+        int clock_time_w;
+        
+        
+        if (clock_is_24h_style()) {
+            solar_time_w = 140;
+            clock_time_w = 64;
+        } else {
+            solar_time_w = 140;
+            clock_time_w = 90;
+        }
+        solar_time_x = center.x - (int)(solar_time_w / 2);
+        clock_time_x = center.x - (int)(clock_time_w / 2);
+        
+            strftime(solar_time_text, sizeof(solar_time_text), time_format, &solar_time_tm);
         draw_outlined_text(ctx,
             solar_time_text,
             fonts_get_system_font(FONT_KEY_BITHAM_30_BLACK),//FONT_KEY_BITHAM_34_MEDIUM_NUMBERS),
-            GRect(center.x - 50, 40, 100, 50), //GRect(42, 47, 64, 32),
+            GRect(solar_time_x, solar_time_y, solar_time_w, solar_time_h), //GRect(42, 47, 64, 32),
             GTextOverflowModeFill,
             GTextAlignmentCenter,
             1,
@@ -669,13 +759,19 @@ static void sunrise_sunset_text_layer_update_proc(Layer* layer, GContext* ctx) {
         draw_outlined_text(ctx,
             clock_time_text,
             fonts_get_system_font(FONT_KEY_GOTHIC_28_BOLD),
-            GRect(42, 86, 64, 32),
+            GRect(clock_time_x, clock_time_y, clock_time_w, clock_time_h),
             GTextOverflowModeFill,
             GTextAlignmentCenter,
             1,
             true);
     }
     
+    #if defined(PBL_RECT)
+    if (clock_is_24h_style()) {
+        time_format = "%H:%M";
+    } else {
+        time_format = "%l:%M";
+    }
     strftime(sunrise_text, sizeof(sunrise_text), time_format, &sunrise_time_tm);
     strftime(sunset_text,  sizeof(sunset_text),  time_format, &sunset_time_tm);
     graphics_context_set_text_color(ctx, GColorWhite);
@@ -733,6 +829,7 @@ static void sunrise_sunset_text_layer_update_proc(Layer* layer, GContext* ctx) {
         GTextAlignmentRight,
         0,
         true);
+    #endif
 }
 
 static void window_unload(Window *window) {
@@ -757,15 +854,18 @@ static void window_load(Window *window) {
     layer_set_update_proc(hand_layer, &hand_layer_update_proc);
     layer_add_child(window_layer, hand_layer);
     
+    #if defined(PBL_RECT)
+        services_layer = layer_create(bounds);
+        layer_set_update_proc(services_layer, &services_layer_update_proc);
+        layer_add_child(window_layer, services_layer);
+    #elif defined(PBL_ROUND)
+    #endif
+    
     // sunrise_sunset_text_layer
     sunrise_sunset_text_layer = layer_create(bounds);
     layer_set_update_proc(sunrise_sunset_text_layer, &sunrise_sunset_text_layer_update_proc);
     layer_add_child(window_layer, sunrise_sunset_text_layer);
-    
-    // battery_layer
-    battery_layer = layer_create(bounds);
-    layer_set_update_proc(battery_layer, &battery_layer_update_proc);
-    layer_add_child(window_layer, battery_layer);
+
 }
 
 static void init(void) {
@@ -774,10 +874,17 @@ static void init(void) {
     app_message_register_outbox_sent(out_sent_handler);
     app_message_register_outbox_failed(out_failed_handler);
     
-    battery_state_service_subscribe(update_battery_percentage);
+    #if defined(PBL_RECT)
+        battery_state_service_subscribe(update_battery_percentage);
+    
+        connection_service_subscribe((ConnectionHandlers) {
+            .pebble_app_connection_handler = app_connection_handler
+        }); 
+    #elif defined(PBL_ROUND)
+    #endif
     
     //app_message_open(app_message_inbox_size_maximum(), app_message_outbox_size_maximum());
-    app_message_open(256, 256);
+    app_message_open(64, 64);
     
     window = window_create();
     window_set_window_handlers(window, (WindowHandlers) {
@@ -788,22 +895,34 @@ static void init(void) {
           
     tick_timer_service_subscribe(MINUTE_UNIT, handle_time_tick);
         
-    // get the _actual_ battery state (global variables set it up as if it were 100%).
-    update_battery_percentage(battery_state_service_peek());
+    
+    #if defined(PBL_RECT)
+        // get the _actual_ battery state (global variables set it up as if it were 100%).
+        update_battery_percentage(battery_state_service_peek());
+    
+        current_connection_available = connection_service_peek_pebble_app_connection();
+    #elif defined(PBL_ROUND)
+    #endif
 }
 
 static void deinit(void) {
     layer_remove_from_parent(hand_layer);
     layer_remove_from_parent(sunlight_layer);
-    layer_remove_from_parent(sunrise_sunset_text_layer);
     layer_remove_from_parent(face_layer);
-    layer_remove_from_parent(battery_layer);
+    layer_remove_from_parent(sunrise_sunset_text_layer);
+    #if defined(PBL_RECT)
+        layer_remove_from_parent(services_layer);
+    #elif defined(PBL_ROUND)
+    #endif
     
     layer_destroy(face_layer);
     layer_destroy(hand_layer);
     layer_destroy(sunlight_layer);
     layer_destroy(sunrise_sunset_text_layer);
-    layer_destroy(battery_layer);
+    #if defined(PBL_RECT)
+        layer_destroy(services_layer);
+    #elif defined(PBL_ROUND)
+    #endif
     
     window_destroy(window);
 }

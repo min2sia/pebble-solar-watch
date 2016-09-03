@@ -1,0 +1,46 @@
+{
+    "author": "bhakterija",
+    "dependencies": {
+        "pebble-clay": "^1.0.1"
+    },
+    "keywords": [],
+    "name": "solar-watch",
+    "pebble": {
+        "capabilities": [
+            "location",
+            "configurable"
+        ],
+        "displayName": "Solar Watch",
+        "enableMultiJS": true,
+        "messageKeys": [
+            "SOLAR_OFFSET",
+            "SUNRISE_HOURS",
+            "SUNRISE_MINUTES",
+            "SUNSET_HOURS",
+            "SUNSET_MINUTES"
+        ],
+        "projectType": "native",
+        "resources": {
+            "media": [
+                {
+                    "file": "images/solar-watch.png",
+                    "menuIcon": true,
+                    "name": "IMAGE_SCREENSHOT",
+                    "type": "bitmap"
+                }
+            ]
+        },
+        "sdkVersion": "3",
+        "targetPlatforms": [
+            "aplite",
+            "basalt",
+            "chalk",
+            "diorite"
+        ],
+        "uuid": "89cf7751-1be0-4811-973e-a24f9961b7c6",
+        "watchapp": {
+            "watchface": true
+        }
+    },
+    "version": "1.2.0"
+}

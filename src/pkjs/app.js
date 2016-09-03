@@ -1,27 +1,20 @@
-//var config_url = "http://mtc.nfshost.com/sunset-watch-config.html";
+var Clay = require('pebble-clay');
+var clayConfig = require('./config');
+var clay = new Clay(clayConfig);
+
+var locationOptions = {
+  enableHighAccuracy: true,
+  maximumAge: Infinity,
+  timeout: 5000
+};
+
 var latitude;
 var longitude;
+var watchId;
 var solarOffset;
 var sunrise;
 var sunset;
 var applicationStarting = true;
-
-// There are two cases when data is sent to watch:
-// 1. On application startup. If location service is not available cached location is used.
-// 2. Periodic update. Data is sent only if location is available and location has changed considerably
-
-function requestLocationAsync() {
-    console.log("requestLocationAsync()");
-    navigator.geolocation.getCurrentPosition(
-        locationSuccess,
-        locationError,
-        {
-            enableHighAccuracy: false, // default
-            timeout: 10000, 
-            maximumAge: Infinity
-        }
-    );
-}
 
 Pebble.addEventListener("ready",
     function(e) {
@@ -32,11 +25,11 @@ Pebble.addEventListener("ready",
         longitude = localStorage.getItem("longitude");
         console.log("Retrieved from localStorage: latitude=" + latitude + ", longitude=" + longitude);
         
-        // Call first time when starting:
-        requestLocationAsync();
+        // Get location when starting:
+        //navigator.geolocation.getCurrentPosition(locationSuccess, locationError, locationOptions);
         
-        // Schedule periodic position poll every X minutes:
-        setInterval(function() {requestLocationAsync();}, 30*60*1000);
+        // Subscribe to location updates
+        watchId = navigator.geolocation.watchPosition(locationUpdateSuccess, locationError, locationOptions);
     }
 );
 
@@ -44,7 +37,8 @@ Pebble.addEventListener('appmessage',
     function(e) {
         console.log('Received appmessage: ' + JSON.stringify(e.payload));
         
-        requestLocationAsync(); 
+        // Incomming communication from watch also triggers location refresh:
+        navigator.geolocation.getCurrentPosition(locationSuccess, locationError, locationOptions);
     }
 );
 
@@ -65,13 +59,15 @@ function sendToWatch() {
     );
 
 }
+
 function locationSuccess(position) {
     var lastLatitude  = latitude;
     var lastLongitude = longitude;
     
     latitude  = position.coords.latitude;
     longitude = position.coords.longitude;
-    console.log("Got position: lat " + latitude + ", long " + longitude);
+    console.log("Got location: lat " + latitude + ", long " + longitude);
+    //Pebble.showSimpleNotificationOnPebble('Got location', 'Lat ' + latitude + ', long ' + longitude);
     
     localStorage.setItem("latitude",  latitude);
     localStorage.setItem("longitude", longitude);
@@ -80,7 +76,29 @@ function locationSuccess(position) {
         calculateSunData();   
         sendToWatch();    
         applicationStarting = false;
-    } else if (Math.abs(latitude - lastLatitude) > 0.01 || Math.abs(longitude - lastLongitude) > 0.01) { // if location change is significant
+    } else if (Math.abs(latitude - lastLatitude) > 0.25 || Math.abs(longitude - lastLongitude) > 0.25) { // if location change is significant
+        calculateSunData();   
+        sendToWatch();  
+    }
+}
+
+function locationUpdateSuccess(position) {
+    var lastLatitude  = latitude;
+    var lastLongitude = longitude;
+    
+    latitude  = position.coords.latitude;
+    longitude = position.coords.longitude;
+    console.log("Location updated: lat " + latitude + ", long " + longitude);
+    
+    localStorage.setItem("latitude",  latitude);
+    localStorage.setItem("longitude", longitude);
+    
+    if (applicationStarting) {
+        calculateSunData();   
+        sendToWatch();    
+        applicationStarting = false;
+    } else if (Math.abs(latitude - lastLatitude) > 0.25 || Math.abs(longitude - lastLongitude) > 0.25) { // if location change is significant
+        Pebble.showSimpleNotificationOnPebble('Location updated by', 'Lat ' + (latitude - lastLatitude) + ', long ' + (longitude - lastLongitude));
         calculateSunData();   
         sendToWatch();  
     }
@@ -115,6 +133,11 @@ function locationError(error) {
 }
 
 function calculateSunData() {
+
+    //TODO: for testing purposes
+    //latitude = 53.354108;
+    //longitude = -6.4040972;
+    
     if (latitude && longitude) {
         var times = SunCalc.getTimes(new Date(), latitude, longitude);
         sunrise = times.sunrise;
