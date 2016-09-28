@@ -1,19 +1,32 @@
+var SolarCalc = require('solar-calc');
+
 var Clay = require('pebble-clay');
 var clayConfig = require('./config');
 var clay = new Clay(clayConfig);
 
 var locationOptions = {
-  enableHighAccuracy: true,
+  enableHighAccuracy: false,
   maximumAge: Infinity,
-  timeout: 5000
+  timeout: 10000
 };
 
 var latitude;
 var longitude;
+var lastLatitude;
+var lastLongitude;
 var watchId;
 var solarOffset;
 var sunrise;
 var sunset;
+var civilDawn;
+var nauticalDawn;
+var astronomicalDawn;
+var civilDusk;
+var nauticalDusk;
+var astronomicalDusk;
+var goldenHourMorning;
+var goldenHourEvening;
+
 var applicationStarting = true;
 
 Pebble.addEventListener("ready",
@@ -23,10 +36,13 @@ Pebble.addEventListener("ready",
      
         latitude  = localStorage.getItem("latitude");
         longitude = localStorage.getItem("longitude");
+        lastLatitude  = latitude;
+        lastLongitude = longitude;
+
         console.log("Retrieved from localStorage: latitude=" + latitude + ", longitude=" + longitude);
         
-        // Get location when starting:
-        //navigator.geolocation.getCurrentPosition(locationSuccess, locationError, locationOptions);
+        // Get current or cached location when starting:
+        navigator.geolocation.getCurrentPosition(locationSuccess, locationError, locationOptions);
         
         // Subscribe to location updates
         watchId = navigator.geolocation.watchPosition(locationUpdateSuccess, locationError, locationOptions);
@@ -37,7 +53,7 @@ Pebble.addEventListener('appmessage',
     function(e) {
         console.log('Received appmessage: ' + JSON.stringify(e.payload));
         
-        // Incomming communication from watch also triggers location refresh:
+        // Incomming communication from watch currently only used to trigger location refresh:
         navigator.geolocation.getCurrentPosition(locationSuccess, locationError, locationOptions);
     }
 );
@@ -49,11 +65,28 @@ function sendToWatch() {
         console.log("  sunset      = " + sunset.getHours()  + ":" + sunset.getMinutes());
     
     Pebble.sendAppMessage( 
-        {"SOLAR_OFFSET"    : solarOffset,
-         "SUNRISE_HOURS"   : sunrise.getHours(),
-         "SUNRISE_MINUTES" : sunrise.getMinutes(),
-         "SUNSET_HOURS"    : sunset.getHours(),
-         "SUNSET_MINUTES"  : sunset.getMinutes()},
+        {"SOLAR_OFFSET"               : solarOffset,
+         "SUNRISE_HOURS"              : sunrise.getHours(),
+         "SUNRISE_MINUTES"            : sunrise.getMinutes(),
+         "SUNSET_HOURS"               : sunset.getHours(),
+         "SUNSET_MINUTES"             : sunset.getMinutes(),
+         "CIVIL_DAWN_HOURS"           : civilDawn.getHours(),
+         "CIVIL_DAWN_MINUTES"         : civilDawn.getMinutes(),
+         "NAUTICAL_DAWN_HOURS"        : nauticalDawn.getHours(),
+         "NAUTICAL_DAWN_MINUTES"      : nauticalDawn.getMinutes(),
+         "ASTRONOMICAL_DAWN_HOURS"    : astronomicalDawn.getHours(),
+         "ASTRONOMICAL_DAWN_MINUTES"  : astronomicalDawn.getMinutes(),
+         "CIVIL_DUSK_HOURS"           : civilDusk.getHours(),
+         "CIVIL_DUSK_MINUTES"         : civilDusk.getMinutes(),
+         "NAUTICAL_DUSK_HOURS"        : nauticalDusk.getHours(),
+         "NAUTICAL_DUSK_MINUTES"      : nauticalDusk.getMinutes(),
+         "ASTRONOMICAL_DUSK_HOURS"    : astronomicalDusk.getHours(),
+         "ASTRONOMICAL_DUSK_MINUTES"  : astronomicalDusk.getMinutes(),
+         "GOLDEN_H_MORNING_HOURS"     : goldenHourMorning.getHours(),
+         "GOLDEN_H_MORNING_MINUTES"   : goldenHourMorning.getMinutes(),
+         "GOLDEN_H_EVENING_HOURS"     : goldenHourEvening.getHours(),
+         "GOLDEN_H_EVENING_MINUTES"   : goldenHourEvening.getMinutes(),         
+        },
       function(e) { console.log("Successfully delivered message with transactionId="   + e.data.transactionId); },
       function(e) { console.log("Unsuccessfully delivered message with transactionId=" + e.data.transactionId);}
     );
@@ -61,9 +94,6 @@ function sendToWatch() {
 }
 
 function locationSuccess(position) {
-    var lastLatitude  = latitude;
-    var lastLongitude = longitude;
-    
     latitude  = position.coords.latitude;
     longitude = position.coords.longitude;
     console.log("Got location: lat " + latitude + ", long " + longitude);
@@ -78,14 +108,14 @@ function locationSuccess(position) {
         applicationStarting = false;
     } else if (Math.abs(latitude - lastLatitude) > 0.25 || Math.abs(longitude - lastLongitude) > 0.25) { // if location change is significant
         calculateSunData();   
-        sendToWatch();  
+        sendToWatch();
+        lastLatitude  = latitude;
+        lastLongitude = longitude;
+
     }
 }
 
 function locationUpdateSuccess(position) {
-    var lastLatitude  = latitude;
-    var lastLongitude = longitude;
-    
     latitude  = position.coords.latitude;
     longitude = position.coords.longitude;
     console.log("Location updated: lat " + latitude + ", long " + longitude);
@@ -101,6 +131,8 @@ function locationUpdateSuccess(position) {
         Pebble.showSimpleNotificationOnPebble('Location updated by', 'Lat ' + (latitude - lastLatitude) + ', long ' + (longitude - lastLongitude));
         calculateSunData();   
         sendToWatch();  
+        lastLatitude  = latitude;
+        lastLongitude = longitude;
     }
 }
 
@@ -134,16 +166,25 @@ function locationError(error) {
 
 function calculateSunData() {
 
-    //TODO: for testing purposes
-    //latitude = 53.354108;
-    //longitude = -6.4040972;
+    //TODO: testing location
+    //latitude = 53.353;
+    //longitude = -6.4565011;
     
     if (latitude && longitude) {
-        var times = SunCalc.getTimes(new Date(), latitude, longitude);
-        sunrise = times.sunrise;
-        sunset = times.sunset;
-        var solarNoon = times.solarNoon;
-        var zoneNoon  = new Date(solarNoon); 
+        var solarCalc = new SolarCalc(new Date(), latitude, longitude);
+        sunrise           = solarCalc.sunrise;
+        sunset            = solarCalc.sunset;
+        civilDawn         = solarCalc.civilDawn;
+        nauticalDawn      = solarCalc.nauticalDawn;
+        astronomicalDawn  = solarCalc.astronomicalDawn;
+        civilDusk         = solarCalc.civilDusk;
+        nauticalDusk      = solarCalc.nauticalDusk;
+        astronomicalDusk  = solarCalc.astronomicalDusk;
+        goldenHourMorning = solarCalc.goldenHourStart;
+        goldenHourEvening = solarCalc.goldenHourEnd;
+        var solarNoon     = solarCalc.solarNoon;
+        
+        var zoneNoon     = new Date(solarNoon); 
         zoneNoon.setHours(12, 0, 0);
         solarOffset = Math.floor((zoneNoon.getTime() - solarNoon.getTime()) / 1000);
     }    
@@ -165,168 +206,3 @@ function calculateSunData() {
 //      console.log("User clicked cancel.");
 //    }
 //});
-
-/*------------------------------------------------------------------------------------
- (c) 2011-2014, Vladimir Agafonkin
- SunCalc is a JavaScript library for calculating sun/mooon position and light phases.
- https://github.com/mourner/suncalc
-*/
-
-// shortcuts for easier to read formulas
-
-var PI   = Math.PI,
-    sin  = Math.sin,
-    cos  = Math.cos,
-    tan  = Math.tan,
-    asin = Math.asin,
-    atan = Math.atan2,
-    acos = Math.acos,
-    rad  = PI / 180;
-
-// sun calculations are based on http://aa.quae.nl/en/reken/zonpositie.html formulas
-
-
-// date/time constants and conversions
-
-var dayMs = 1000 * 60 * 60 * 24,
-    J1970 = 2440588,
-    J2000 = 2451545;
-
-function toJulian(date) { return date.valueOf() / dayMs - 0.5 + J1970; }
-function fromJulian(j)  { return new Date((j + 0.5 - J1970) * dayMs); }
-function toDays(date)   { return toJulian(date) - J2000; }
-
-
-// general calculations for position
-
-var e = rad * 23.4397; // obliquity of the Earth
-
-function rightAscension(l, b) { return atan(sin(l) * cos(e) - tan(b) * sin(e), cos(l)); }
-function declination(l, b)    { return asin(sin(b) * cos(e) + cos(b) * sin(e) * sin(l)); }
-
-function azimuth(H, phi, dec)  { return atan(sin(H), cos(H) * sin(phi) - tan(dec) * cos(phi)); }
-function altitude(H, phi, dec) { return asin(sin(phi) * sin(dec) + cos(phi) * cos(dec) * cos(H)); }
-
-function siderealTime(d, lw) { return rad * (280.16 + 360.9856235 * d) - lw; }
-
-
-// general sun calculations
-
-function solarMeanAnomaly(d) { return rad * (357.5291 + 0.98560028 * d); }
-
-function eclipticLongitude(M) {
-
-    var C = rad * (1.9148 * sin(M) + 0.02 * sin(2 * M) + 0.0003 * sin(3 * M)), // equation of center
-        P = rad * 102.9372; // perihelion of the Earth
-
-    return M + C + P + PI;
-}
-
-function sunCoords(d) {
-
-    var M = solarMeanAnomaly(d),
-        L = eclipticLongitude(M);
-
-    return {
-        dec: declination(L, 0),
-        ra: rightAscension(L, 0)
-    };
-}
-
-
-var SunCalc = {};
-
-
-// calculates sun position for a given date and latitude/longitude
-
-SunCalc.getPosition = function (date, lat, lng) {
-
-    var lw  = rad * -lng,
-        phi = rad * lat,
-        d   = toDays(date),
-
-        c  = sunCoords(d),
-        H  = siderealTime(d, lw) - c.ra;
-
-    return {
-        azimuth: azimuth(H, phi, c.dec),
-        altitude: altitude(H, phi, c.dec)
-    };
-};
-
-
-// sun times configuration (angle, morning name, evening name)
-
-var times = SunCalc.times = [
-    [-0.833, 'sunrise',       'sunset'      ],
-    [  -0.3, 'sunriseEnd',    'sunsetStart' ],
-    [    -6, 'dawn',          'dusk'        ],
-    [   -12, 'nauticalDawn',  'nauticalDusk'],
-    [   -18, 'nightEnd',      'night'       ],
-    [     6, 'goldenHourEnd', 'goldenHour'  ]
-];
-
-// adds a custom time to the times config
-
-SunCalc.addTime = function (angle, riseName, setName) {
-    times.push([angle, riseName, setName]);
-};
-
-
-// calculations for sun times
-
-var J0 = 0.0009;
-
-function julianCycle(d, lw) { return Math.round(d - J0 - lw / (2 * PI)); }
-
-function approxTransit(Ht, lw, n) { return J0 + (Ht + lw) / (2 * PI) + n; }
-function solarTransitJ(ds, M, L)  { return J2000 + ds + 0.0053 * sin(M) - 0.0069 * sin(2 * L); }
-
-function hourAngle(h, phi, d) { return acos((sin(h) - sin(phi) * sin(d)) / (cos(phi) * cos(d))); }
-
-// returns set time for the given sun altitude
-function getSetJ(h, lw, phi, dec, n, M, L) {
-
-    var w = hourAngle(h, phi, dec),
-        a = approxTransit(w, lw, n);
-    return solarTransitJ(a, M, L);
-}
-
-
-// calculates sun times for a given date and latitude/longitude
-
-SunCalc.getTimes = function (date, lat, lng) {
-
-    var lw = rad * -lng,
-        phi = rad * lat,
-
-        d = toDays(date),
-        n = julianCycle(d, lw),
-        ds = approxTransit(0, lw, n),
-
-        M = solarMeanAnomaly(ds),
-        L = eclipticLongitude(M),
-        dec = declination(L, 0),
-
-        Jnoon = solarTransitJ(ds, M, L),
-
-        i, len, time, Jset, Jrise;
-
-
-    var result = {
-        solarNoon: fromJulian(Jnoon),
-        nadir: fromJulian(Jnoon - 0.5)
-    };
-
-    for (i = 0, len = times.length; i < len; i += 1) {
-        time = times[i];
-
-        Jset = getSetJ(time[0] * rad, lw, phi, dec, n, M, L);
-        Jrise = Jnoon - (Jset - Jnoon);
-
-        result[time[1]] = fromJulian(Jrise);
-        result[time[2]] = fromJulian(Jset);
-    }
-
-    return result;
-};

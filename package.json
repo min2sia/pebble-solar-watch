@@ -1,7 +1,8 @@
 {
     "author": "bhakterija",
     "dependencies": {
-        "pebble-clay": "^1.0.1"
+        "pebble-clay": "^1.0.1",
+        "solar-calc": "^1.0.3"
     },
     "keywords": [],
     "name": "solar-watch",
@@ -17,14 +18,65 @@
             "SUNRISE_HOURS",
             "SUNRISE_MINUTES",
             "SUNSET_HOURS",
-            "SUNSET_MINUTES"
+            "SUNSET_MINUTES",
+            "CIVIL_DAWN_HOURS",
+            "CIVIL_DAWN_MINUTES",
+            "NAUTICAL_DAWN_HOURS",
+            "NAUTICAL_DAWN_MINUTES",
+            "ASTRONOMICAL_DAWN_HOURS",
+            "ASTRONOMICAL_DAWN_MINUTES",
+            "CIVIL_DUSK_HOURS",
+            "CIVIL_DUSK_MINUTES",
+            "NAUTICAL_DUSK_HOURS",
+            "NAUTICAL_DUSK_MINUTES",
+            "ASTRONOMICAL_DUSK_HOURS",
+            "ASTRONOMICAL_DUSK_MINUTES",
+            "GOLDEN_H_MORNING_HOURS",
+            "GOLDEN_H_MORNING_MINUTES",
+            "GOLDEN_H_EVENING_HOURS",
+            "GOLDEN_H_EVENING_MINUTES"
         ],
         "projectType": "native",
         "resources": {
             "media": [
                 {
+                    "file": "fonts/SourceSansPro-Black.ttf",
+                    "name": "SOURCE_SANS_PRO_BLACK_38",
+                    "targetPlatforms": [
+                        "chalk"
+                    ],
+                    "type": "font"
+                },
+                {
+                    "file": "fonts/SourceSansPro-Black.ttf",
+                    "name": "SOURCE_SANS_PRO_BLACK_32",
+                    "targetPlatforms": [
+                        "chalk"
+                    ],
+                    "type": "font"
+                },
+                {
+                    "file": "fonts/SourceSansPro-Black.ttf",
+                    "name": "SOURCE_SANS_PRO_BLACK_26",
+                    "targetPlatforms": [
+                        "aplite",
+                        "basalt",
+                        "diorite"
+                    ],
+                    "type": "font"
+                },
+                {
+                    "file": "fonts/SourceSansPro-Black.ttf",
+                    "name": "SOURCE_SANS_PRO_BLACK_30",
+                    "targetPlatforms": [
+                        "aplite",
+                        "basalt",
+                        "diorite"
+                    ],
+                    "type": "font"
+                },
+                {
                     "file": "images/solar-watch.png",
-                    "menuIcon": true,
                     "name": "IMAGE_SCREENSHOT",
                     "type": "bitmap"
                 }
@@ -33,9 +85,7 @@
         "sdkVersion": "3",
         "targetPlatforms": [
             "aplite",
-            "basalt",
-            "chalk",
-            "diorite"
+            "basalt"
         ],
         "uuid": "89cf7751-1be0-4811-973e-a24f9961b7c6",
         "watchapp": {
