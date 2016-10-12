@@ -34,7 +34,9 @@
             "GOLDEN_H_MORNING_HOURS",
             "GOLDEN_H_MORNING_MINUTES",
             "GOLDEN_H_EVENING_HOURS",
-            "GOLDEN_H_EVENING_MINUTES"
+            "GOLDEN_H_EVENING_MINUTES",
+            "TEMPERATURE",
+            "DATE"
         ],
         "projectType": "native",
         "resources": {

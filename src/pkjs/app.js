@@ -1,8 +1,21 @@
+//TODO: send pre-formatted date string, e.g. "Oct 1"
+//TODO: weather update on?..
+
+console.log('JS started');
+
+var months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+
+// var watchInfo = Pebble.getActiveWatchInfo ? Pebble.getActiveWatchInfo() : null;
+// if (watchInfo) {
+//     console.log(JSON.stringify(watchInfo));
+// }
+
+//TODO: https://github.com/mourner/suncalc?
 var SolarCalc = require('solar-calc');
 
-var Clay = require('pebble-clay');
-var clayConfig = require('./config');
-var clay = new Clay(clayConfig);
+// var Clay = require('pebble-clay');
+// var clayConfig = require('./config');
+// var clay = new Clay(clayConfig);
 
 var locationOptions = {
   enableHighAccuracy: false,
@@ -14,25 +27,13 @@ var latitude;
 var longitude;
 var lastLatitude;
 var lastLongitude;
-var watchId;
-var solarOffset;
-var sunrise;
-var sunset;
-var civilDawn;
-var nauticalDawn;
-var astronomicalDawn;
-var civilDusk;
-var nauticalDusk;
-var astronomicalDusk;
-var goldenHourMorning;
-var goldenHourEvening;
-
+var temperatureUnits = 'metric'; //TODO: configurable
 var applicationStarting = true;
+var message = {};
 
 Pebble.addEventListener("ready",
     function(e) {
-        console.log("JS starting...");
-        console.log(e.type);      
+        console.log("Event 'ready'");// + JSON.stringify(e));    
      
         latitude  = localStorage.getItem("latitude");
         longitude = localStorage.getItem("longitude");
@@ -42,97 +43,101 @@ Pebble.addEventListener("ready",
         console.log("Retrieved from localStorage: latitude=" + latitude + ", longitude=" + longitude);
         
         // Get current or cached location when starting:
-        navigator.geolocation.getCurrentPosition(locationSuccess, locationError, locationOptions);
+        //navigator.geolocation.getCurrentPosition(locationSuccess, locationError, locationOptions);
         
         // Subscribe to location updates
-        watchId = navigator.geolocation.watchPosition(locationUpdateSuccess, locationError, locationOptions);
+        navigator.geolocation.watchPosition(locationUpdateSuccess, locationError, locationOptions);
     }
 );
 
 Pebble.addEventListener('appmessage',
     function(e) {
-        console.log('Received appmessage: ' + JSON.stringify(e.payload));
+        console.log('Received appmessage');// + JSON.stringify(e));
         
         // Incomming communication from watch currently only used to trigger location refresh:
-        navigator.geolocation.getCurrentPosition(locationSuccess, locationError, locationOptions);
+        //navigator.geolocation.getCurrentPosition(locationSuccess, locationError, locationOptions);
     }
 );
 
+// to make sure nothing else but numbers is passed in the AppMessage
+function toNumber(anyValueIn)
+{
+    var numValueOut = Number(anyValueIn);
+    return isNaN(numValueOut) ? 0 : numValueOut;
+}
+
 function sendToWatch() {
-    console.log("Sending sun data:");
-        console.log("  solarOffset = " + solarOffset);
-        console.log("  sunrise     = " + sunrise.getHours() + ":" + sunrise.getMinutes());
-        console.log("  sunset      = " + sunset.getHours()  + ":" + sunset.getMinutes());
+    console.log("sendToWatch()");
     
-    Pebble.sendAppMessage( 
-        {"SOLAR_OFFSET"               : solarOffset,
-         "SUNRISE_HOURS"              : sunrise.getHours(),
-         "SUNRISE_MINUTES"            : sunrise.getMinutes(),
-         "SUNSET_HOURS"               : sunset.getHours(),
-         "SUNSET_MINUTES"             : sunset.getMinutes(),
-         "CIVIL_DAWN_HOURS"           : civilDawn.getHours(),
-         "CIVIL_DAWN_MINUTES"         : civilDawn.getMinutes(),
-         "NAUTICAL_DAWN_HOURS"        : nauticalDawn.getHours(),
-         "NAUTICAL_DAWN_MINUTES"      : nauticalDawn.getMinutes(),
-         "ASTRONOMICAL_DAWN_HOURS"    : astronomicalDawn.getHours(),
-         "ASTRONOMICAL_DAWN_MINUTES"  : astronomicalDawn.getMinutes(),
-         "CIVIL_DUSK_HOURS"           : civilDusk.getHours(),
-         "CIVIL_DUSK_MINUTES"         : civilDusk.getMinutes(),
-         "NAUTICAL_DUSK_HOURS"        : nauticalDusk.getHours(),
-         "NAUTICAL_DUSK_MINUTES"      : nauticalDusk.getMinutes(),
-         "ASTRONOMICAL_DUSK_HOURS"    : astronomicalDusk.getHours(),
-         "ASTRONOMICAL_DUSK_MINUTES"  : astronomicalDusk.getMinutes(),
-         "GOLDEN_H_MORNING_HOURS"     : goldenHourMorning.getHours(),
-         "GOLDEN_H_MORNING_MINUTES"   : goldenHourMorning.getMinutes(),
-         "GOLDEN_H_EVENING_HOURS"     : goldenHourEvening.getHours(),
-         "GOLDEN_H_EVENING_MINUTES"   : goldenHourEvening.getMinutes(),         
+//     if (!sunrise || !sunset) {
+//         console.log("  Error: sun data not initialized");
+//         return;
+//     }
+//     console.log("  solarOffset = " + solarOffset);
+//     console.log("  sunrise     = " + sunrise.getHours() + ":" + sunrise.getMinutes());
+//     console.log("  sunset      = " + sunset.getHours()  + ":" + sunset.getMinutes());
+        
+    //TODO: get phone's locale?
+    //message.DATE = new Date().toLocaleString('en', {month:'short', day:'numeric'});
+    var date = new Date();
+    message.DATE = months[date.getMonth()] + ' ' + date.getDate();
+    
+    Pebble.sendAppMessage(
+        message, 
+        function(e) { 
+            console.log("Successfully delivered message"); //   + JSON.stringify(e)); 
+            message = {};
         },
-      function(e) { console.log("Successfully delivered message with transactionId="   + e.data.transactionId); },
-      function(e) { console.log("Unsuccessfully delivered message with transactionId=" + e.data.transactionId);}
+        function(e) { 
+            console.log("Message delivery failed"); // + JSON.stringify(e));
+            message = {};
+        }
     );
-
 }
 
-function locationSuccess(position) {
-    latitude  = position.coords.latitude;
-    longitude = position.coords.longitude;
-    console.log("Got location: lat " + latitude + ", long " + longitude);
-    //Pebble.showSimpleNotificationOnPebble('Got location', 'Lat ' + latitude + ', long ' + longitude);
+// function locationSuccess(position) {
+//     latitude  = position.coords.latitude;
+//     longitude = position.coords.longitude;
+//     console.log("Got location: lat " + latitude + ", lon " + longitude);
+//     //Pebble.showSimpleNotificationOnPebble('Got location', 'Lat ' + latitude + ', long ' + longitude);
     
-    localStorage.setItem("latitude",  latitude);
-    localStorage.setItem("longitude", longitude);
+//     localStorage.setItem("latitude",  latitude);
+//     localStorage.setItem("longitude", longitude);
     
-    if (applicationStarting) {
-        calculateSunData();   
-        sendToWatch();    
-        applicationStarting = false;
-    } else if (Math.abs(latitude - lastLatitude) > 0.25 || Math.abs(longitude - lastLongitude) > 0.25) { // if location change is significant
-        calculateSunData();   
-        sendToWatch();
-        lastLatitude  = latitude;
-        lastLongitude = longitude;
-
-    }
-}
+//     fetchWeather(latitude, longitude);
+    
+//     if (applicationStarting) {
+//         calculateSunData();   
+//         sendToWatch();    
+//         applicationStarting = false;
+//     } else if (Math.abs(latitude - lastLatitude) > 0.25 || Math.abs(longitude - lastLongitude) > 0.25) { // if location change is significant
+//         calculateSunData();   
+//         sendToWatch();
+//         lastLatitude  = latitude;
+//         lastLongitude = longitude;
+//     }
+// }
 
 function locationUpdateSuccess(position) {
     latitude  = position.coords.latitude;
     longitude = position.coords.longitude;
-    console.log("Location updated: lat " + latitude + ", long " + longitude);
+    console.log("Location updated: lat " + latitude + ", lon " + longitude);
     
     localStorage.setItem("latitude",  latitude);
     localStorage.setItem("longitude", longitude);
     
     if (applicationStarting) {
         calculateSunData();   
-        sendToWatch();    
+        fetchWeather(latitude, longitude);
+        //sendToWatch();    
         applicationStarting = false;
     } else if (Math.abs(latitude - lastLatitude) > 0.25 || Math.abs(longitude - lastLongitude) > 0.25) { // if location change is significant
-        Pebble.showSimpleNotificationOnPebble('Location updated by', 'Lat ' + (latitude - lastLatitude) + ', long ' + (longitude - lastLongitude));
+        Pebble.showSimpleNotificationOnPebble('Location updated by', 'Lat ' + (latitude - lastLatitude) + ', lon ' + (longitude - lastLongitude));
         calculateSunData();   
-        sendToWatch();  
+        //sendToWatch();  
         lastLatitude  = latitude;
         lastLongitude = longitude;
+        fetchWeather(latitude, longitude);
     }
 }
 
@@ -159,7 +164,7 @@ function locationError(error) {
     if (applicationStarting) {
         // use last cached location if available
         calculateSunData();   
-        sendToWatch();
+        fetchWeather(latitude, longitude);
         applicationStarting = false;
     }
 }
@@ -167,27 +172,78 @@ function locationError(error) {
 function calculateSunData() {
 
     //TODO: testing location
-    //latitude = 53.353;
-    //longitude = -6.4565011;
+    //latitude = 55.348393;
+    //longitude = 23.663658;
     
-    if (latitude && longitude) {
+    if (latitude !== null && longitude !== null) {
         var solarCalc = new SolarCalc(new Date(), latitude, longitude);
-        sunrise           = solarCalc.sunrise;
-        sunset            = solarCalc.sunset;
-        civilDawn         = solarCalc.civilDawn;
-        nauticalDawn      = solarCalc.nauticalDawn;
-        astronomicalDawn  = solarCalc.astronomicalDawn;
-        civilDusk         = solarCalc.civilDusk;
-        nauticalDusk      = solarCalc.nauticalDusk;
-        astronomicalDusk  = solarCalc.astronomicalDusk;
-        goldenHourMorning = solarCalc.goldenHourStart;
-        goldenHourEvening = solarCalc.goldenHourEnd;
-        var solarNoon     = solarCalc.solarNoon;
-        
-        var zoneNoon     = new Date(solarNoon); 
+        var sunrise           = solarCalc.sunrise;
+        var sunset            = solarCalc.sunset;
+        var civilDawn         = solarCalc.civilDawn;
+        var nauticalDawn      = solarCalc.nauticalDawn;
+        var astronomicalDawn  = solarCalc.astronomicalDawn;
+        var civilDusk         = solarCalc.civilDusk;
+        var nauticalDusk      = solarCalc.nauticalDusk;
+        var astronomicalDusk  = solarCalc.astronomicalDusk;
+        var goldenHourEvening = solarCalc.goldenHourStart;
+        var goldenHourMorning = solarCalc.goldenHourEnd;
+        var solarNoon         = solarCalc.solarNoon;
+
+        var zoneNoon = new Date(solarNoon); 
         zoneNoon.setHours(12, 0, 0);
-        solarOffset = Math.floor((zoneNoon.getTime() - solarNoon.getTime()) / 1000);
+        var solarOffset = Math.floor((zoneNoon.getTime() - solarNoon.getTime()) / 1000);
+        
+        message.SOLAR_OFFSET               = toNumber(solarOffset);
+        message.SUNRISE_HOURS              = toNumber(sunrise.getHours());
+        message.SUNRISE_MINUTES            = toNumber(sunrise.getMinutes());
+        message.CIVIL_DAWN_HOURS           = toNumber(civilDawn.getHours());
+        message.CIVIL_DAWN_MINUTES         = toNumber(civilDawn.getMinutes());
+        message.NAUTICAL_DAWN_HOURS        = toNumber(nauticalDawn.getHours());
+        message.NAUTICAL_DAWN_MINUTES      = toNumber(nauticalDawn.getMinutes());
+        message.ASTRONOMICAL_DAWN_HOURS    = toNumber(astronomicalDawn.getHours());
+        message.ASTRONOMICAL_DAWN_MINUTES  = toNumber(astronomicalDawn.getMinutes());
+        message.GOLDEN_H_MORNING_HOURS     = toNumber(goldenHourMorning.getHours());
+        message.GOLDEN_H_MORNING_MINUTES   = toNumber(goldenHourMorning.getMinutes());
+        message.SUNSET_HOURS               = toNumber(sunset.getHours());
+        message.SUNSET_MINUTES             = toNumber(sunset.getMinutes());
+        message.CIVIL_DUSK_HOURS           = toNumber(civilDusk.getHours());
+        message.CIVIL_DUSK_MINUTES         = toNumber(civilDusk.getMinutes());
+        message.NAUTICAL_DUSK_HOURS        = toNumber(nauticalDusk.getHours());
+        message.NAUTICAL_DUSK_MINUTES      = toNumber(nauticalDusk.getMinutes());
+        message.ASTRONOMICAL_DUSK_HOURS    = toNumber(astronomicalDusk.getHours());
+        message.ASTRONOMICAL_DUSK_MINUTES  = toNumber(astronomicalDusk.getMinutes());
+        message.GOLDEN_H_EVENING_HOURS     = toNumber(goldenHourEvening.getHours());
+        message.GOLDEN_H_EVENING_MINUTES   = toNumber(goldenHourEvening.getMinutes());
     }    
+}
+
+function fetchWeather(latitude, longitude) {
+    var url = 'http://api.openweathermap.org/data/2.5/weather?' + 
+              'units=' + temperatureUnits +
+              '&lat=' + latitude + 
+              '&lon=' + longitude + 
+              '&cnt=1'+
+              '&appid=2b5f53285b1d3978482a0ad6888d0427';
+    //console.log('fetchWeather(): ' + url);
+    
+    var req = new XMLHttpRequest();
+    req.open('GET', url, true);
+    req.onload = function () {
+        //console.log('req.onload()');
+        if (req.readyState === 4) {
+            if (req.status === 200) {
+                //console.log(req.responseText);
+                var response = JSON.parse(req.responseText);
+                var temperature = Math.round(response.main.temp);
+                //console.log('Got temperature: ' + temperature);                
+                message.TEMPERATURE = temperature + '\xB0'; 
+            } else {
+                console.log('ERROR: unable to fetch weather info ' + JSON.stringify(req));
+            }
+        }
+        sendToWatch();
+    };
+    req.send();
 }
 
 //Pebble.addEventListener("showConfiguration", function(e) {
