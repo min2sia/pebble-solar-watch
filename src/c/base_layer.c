@@ -45,7 +45,7 @@ static void draw_sunrays() {
     const uint16_t ray_length_max = 20;
     uint16_t ray_length;
 
-    deg_step = TRIG_MAX_ANGLE / 120;
+    deg_step = TRIG_MAX_ANGLE / 120; // density
 
     for (int i=start_angle; i<end_angle; i+=deg_step) {
         //float current_rads = rad_factor * (deg_step * (i - 30));
@@ -54,7 +54,8 @@ static void draw_sunrays() {
             .y = (-cos_lookup(i) * radius / TRIG_MAX_RATIO) + center.y
         };
 
-        ray_length = ray_length_min + (rand() % (ray_length_max-ray_length_min));
+        //ray_length = ray_length_min + (rand() % (ray_length_max-ray_length_min));
+        ray_length = ray_length_min + (sin_lookup(my_abs(i)) % (ray_length_max-ray_length_min));
 
         GPoint end_point = {
             .x = ( sin_lookup(i) * (radius + ray_length) / TRIG_MAX_RATIO) + center.x,
@@ -84,8 +85,8 @@ static void draw_light_periods() {
     int32_t civil_dusk_angle           = (TRIG_MAX_ANGLE * civil_dusk_time_solar)           / HOURS_PER_DAY;
     int32_t nautical_dusk_angle        = (TRIG_MAX_ANGLE * nautical_dusk_time_solar)        / HOURS_PER_DAY;
     int32_t astronomical_dusk_angle    = (TRIG_MAX_ANGLE * astronomical_dusk_time_solar)    / HOURS_PER_DAY;
-    int32_t golden_hour_morning_angle  = (TRIG_MAX_ANGLE * golden_hour_morning_time_solar)  / HOURS_PER_DAY;
-    int32_t golden_hour_evening_angle  = (TRIG_MAX_ANGLE * golden_hour_evening_time_solar)  / HOURS_PER_DAY;
+//     int32_t golden_hour_morning_angle  = (TRIG_MAX_ANGLE * golden_hour_morning_time_solar)  / HOURS_PER_DAY;
+//     int32_t golden_hour_evening_angle  = (TRIG_MAX_ANGLE * golden_hour_evening_time_solar)  / HOURS_PER_DAY;
 
 
     // Screen's 0 degrees is at the top, while watch dial mark for 0 hours is at the bottom, we neeed to rotate all angles by -180 deg
@@ -109,19 +110,19 @@ static void draw_light_periods() {
     //APP_LOG(APP_LOG_LEVEL_DEBUG, "  sunrise_angle: %d, sunset_angle: %d", (int)sunrise_angle, (int)sunset_angle);
 
     // Golden hour
-    golden_hour_morning_angle += TRIG_MAX_ANGLE/2;
-    golden_hour_evening_angle -= TRIG_MAX_ANGLE/2;
-    if (golden_hour_morning_angle > golden_hour_evening_angle) {
-        #if defined(PBL_COLOR)
-        graphics_context_set_fill_color(ctx, GColorRajah);
-        graphics_fill_radial(
-            ctx, 
-            grect_inset(clock_face_bounds, GEdgeInsets(0)), 
-            GOvalScaleModeFitCircle, 
-            clock_face_radius, 
-            golden_hour_evening_angle, 
-            golden_hour_morning_angle); 
-        #elif defined(PBL_BW)
+//     golden_hour_morning_angle += TRIG_MAX_ANGLE/2;
+//     golden_hour_evening_angle -= TRIG_MAX_ANGLE/2;
+//     if (golden_hour_morning_angle > golden_hour_evening_angle) {
+//         #if defined(PBL_COLOR)
+//         graphics_context_set_fill_color(ctx, GColorRajah);
+//         graphics_fill_radial(
+//             ctx, 
+//             grect_inset(clock_face_bounds, GEdgeInsets(0)), 
+//             GOvalScaleModeFitCircle, 
+//             clock_face_radius, 
+//             golden_hour_evening_angle, 
+//             golden_hour_morning_angle); 
+//         #elif defined(PBL_BW)
         //             draw_dithered_radial(
         //                 25,
         //                 ctx, 
@@ -132,8 +133,8 @@ static void draw_light_periods() {
         //                 golden_hour_morning_angle,
         //                 daytime_color, 
         //                 nighttime_color);
-        #endif            
-    }
+//         #endif            
+//     }
     // Civil twilight - first draw on whole duration of the night
     if (sunrise_angle > sunset_angle) {
         #if defined(PBL_COLOR)
@@ -335,37 +336,35 @@ static void draw_hour_marks() {
             4);
     }
     
-    if (setting_hour_numbers) {
-        // draw hour text
-        char hour_text[] = "00";
-        
-        deg_step = TRIG_MAX_ANGLE / 8; // 45deg
-        for (uint16_t i=0; i<8; i++) {
-            GPoint current_point = {
-                .x = ( sin_lookup(deg_step * i) * (radius-24) / TRIG_MAX_RATIO) + center.x,
-                .y = (-cos_lookup(deg_step * i) * (radius-24) / TRIG_MAX_RATIO) + center.y
-            };
-            
-            switch(i) {
-                case 0 : strcpy(hour_text, "12"); break;
-                case 1 : strcpy(hour_text, "");   break;
-                case 2 : strcpy(hour_text, "18"); break;
-                case 3 : strcpy(hour_text, "");   break;
-                case 4 : strcpy(hour_text, "0");  break;
-                case 5 : strcpy(hour_text, "");   break;
-                case 6 : strcpy(hour_text, "6");  break;
-                case 7 : strcpy(hour_text, "");   break;
-            }
-            
-            draw_outlined_text(ctx,
-                hour_text,
-                fonts_get_system_font(FONT_KEY_GOTHIC_18_BOLD),
-                GRect(current_point.x-10, current_point.y-12, 20, 20),
-                GTextOverflowModeWordWrap,
-                GTextAlignmentCenter,
-                1,
-                false);
+    // draw hour text
+    char hour_text[] = "00";
+
+    deg_step = TRIG_MAX_ANGLE / 8; // 45deg
+    for (uint16_t i=0; i<8; i++) {
+        GPoint current_point = {
+            .x = ( sin_lookup(deg_step * i) * (radius-24) / TRIG_MAX_RATIO) + center.x,
+            .y = (-cos_lookup(deg_step * i) * (radius-24) / TRIG_MAX_RATIO) + center.y
+        };
+
+        switch(i) {
+            case 0 : strcpy(hour_text, "12"); break;
+            case 1 : strcpy(hour_text, "");   break;
+            case 2 : strcpy(hour_text, "18"); break;
+            case 3 : strcpy(hour_text, "");   break;
+            case 4 : strcpy(hour_text, "0");  break;
+            case 5 : strcpy(hour_text, "");   break;
+            case 6 : strcpy(hour_text, "6");  break;
+            case 7 : strcpy(hour_text, "");   break;
         }
+
+        draw_outlined_text(ctx,
+                           hour_text,
+                           fonts_get_system_font(FONT_KEY_GOTHIC_18_BOLD),
+                           GRect(current_point.x-10, current_point.y-12, 20, 20),
+                           GTextOverflowModeWordWrap,
+                           GTextAlignmentCenter,
+                           1,
+                           false);
     }    
 }
 

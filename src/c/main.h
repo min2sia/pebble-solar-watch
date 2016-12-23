@@ -3,6 +3,8 @@
 extern Layer *day_layer;
 extern Layer *minute_layer;
 
+extern bool js_ready;
+
 extern struct tm wall_time_tm;
 extern struct tm solar_time_tm;
 extern struct tm sunrise_time_tm;
@@ -26,12 +28,6 @@ extern char temperature_text[];
 
 extern bool current_connection_available;
 extern bool current_location_available;
-
-extern bool setting_digital_display;
-extern bool setting_hour_numbers;
-extern bool setting_battery_status;
-extern bool setting_connection_status;
-extern bool setting_location_status;
 
 extern GFont font_solar_time;
 extern GFont font_clock_time;

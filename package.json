@@ -36,7 +36,9 @@
             "GOLDEN_H_EVENING_HOURS",
             "GOLDEN_H_EVENING_MINUTES",
             "TEMPERATURE",
-            "DATE"
+            "DATE",
+            "JSREADY",
+            "LOCATION_AVAILABLE"
         ],
         "projectType": "native",
         "resources": {
@@ -86,7 +88,6 @@
         },
         "sdkVersion": "3",
         "targetPlatforms": [
-            "aplite",
             "basalt"
         ],
         "uuid": "89cf7751-1be0-4811-973e-a24f9961b7c6",
@@ -94,5 +95,5 @@
             "watchface": true
         }
     },
-    "version": "1.2.0"
+    "version": "2.0.0"
 }
