@@ -1,4 +1,4 @@
-console.log('JS started');
+// console.log('JS started');
 
 var months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 
@@ -30,18 +30,15 @@ var weatherUnitSystem = 'metric'; //TODO: configurable
 
 Pebble.addEventListener("ready",
     function(e) {
-        console.log("Event 'ready'");// + JSON.stringify(e));   
+//         console.log("Event 'ready'");// + JSON.stringify(e));   
         sendToWatch({'JSREADY': 1});
         
         //localStorage.clear();
         
         latitude  = toNumber(localStorage.getItem("latitude"));
         longitude = toNumber(localStorage.getItem("longitude"));
-    //TODO: testing location
-//      latitude = 55.348393;
-//      longitude = 23.663658;
 
-        console.log("Location from localStorage: " + latitude + ", " + longitude);
+//         console.log("Location from localStorage: " + latitude + ", " + longitude);
         
         updateSunData();   
         updateWeather(); 
@@ -53,7 +50,7 @@ Pebble.addEventListener("ready",
 // Incomming communication from watch currently only used to trigger refresh
 Pebble.addEventListener('appmessage',
     function(e) {
-        console.log('Received appmessage');// + JSON.stringify(e));
+//         console.log('Received appmessage');// + JSON.stringify(e));
         
         navigator.geolocation.getCurrentPosition(locationSuccess, locationError, locationOptions);
     }
@@ -73,31 +70,26 @@ function sendToWatch(message) {
     var date = new Date();
     message.DATE = months[date.getMonth()] + ' ' + date.getDate();
 
-    console.log("sendToWatch():");
-    console.log("  " + JSON.stringify(message));
+//     console.log("sendToWatch():");
+//     console.log("  " + JSON.stringify(message));
     
     Pebble.sendAppMessage(
         message, 
         function(e) { 
-            console.log("Successfully delivered message"); //   + JSON.stringify(e)); 
+//             console.log("Successfully delivered message"); //   + JSON.stringify(e)); 
         },
         function(e) { 
-            console.log("Message delivery failed"); // + JSON.stringify(e));
+//             console.log("Message delivery failed"); // + JSON.stringify(e));
         }
     );
 }
 
 function locationSuccess(position) {
-console.log("locationSuccess()");
     sendToWatch({"LOCATION_AVAILABLE" : 1});
-    console.log("Got location: " + position.coords.latitude + ", " + position.coords.longitude);
+//     console.log("Got location: " + position.coords.latitude + ", " + position.coords.longitude);
 
     latitude  = toNumber(position.coords.latitude);
     longitude = toNumber(position.coords.longitude);
-//TODO: testing location
-//  latitude = 55.348393;
-// longitude = 23.663658;
-
     localStorage.setItem("latitude",  latitude);
     localStorage.setItem("longitude", longitude);
 
@@ -144,11 +136,10 @@ function locationError(error) {
             errorText = "Unknown error";
             break;
     }
-    console.log("navigator.geolocation.getCurrentPosition() returned error " + error.code + ": " + errorText);
+//     console.log("navigator.geolocation.getCurrentPosition() returned error " + error.code + ": " + errorText);
 }
 
 function updateSunData() {
-console.log("updateSunData()");
     var message = {};
     
     if (latitude === null || longitude === null) {
@@ -198,7 +189,6 @@ console.log("updateSunData()");
 }
 
 function updateWeather() {
-console.log("updateWeather()");    
     if (latitude === null || longitude === null) {
         return;
     }
@@ -224,11 +214,11 @@ console.log("updateWeather()");
                 if (country === 'US') {
                     temperature = temperature * 9 / 5 + 32; // convert to Fahrenheit
                 }
-                console.log('Got temperature: ' + temperature + ' (' + country + ')');    
+//                 console.log('Got temperature: ' + temperature + ' (' + country + ')');    
                 sendToWatch({"TEMPERATURE" : temperature + '\xB0'});
-            } else {
-                console.log('ERROR: unable to fetch weather info ' + JSON.stringify(req));
-            }
+            } //else {
+//                 console.log('ERROR: unable to fetch weather info ' + JSON.stringify(req));
+//             }
         }
     };
     req.send();

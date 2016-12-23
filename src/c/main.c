@@ -75,13 +75,13 @@ void send_request(int command) {
             dict_write_end(iter);
             result = app_message_outbox_send();
             if (result != APP_MSG_OK) {
-                APP_LOG(APP_LOG_LEVEL_ERROR, "Error sending the outbox: %d - s", (int)result, translate_AppMessageResult(result));
+//                 APP_LOG(APP_LOG_LEVEL_ERROR, "Error sending the outbox: %d - s", (int)result, translate_AppMessageResult(result));
             }
         } else {
-            APP_LOG(APP_LOG_LEVEL_ERROR, "Error preparing the outbox: %d - %s", (int)result, translate_AppMessageResult(result));
+//             APP_LOG(APP_LOG_LEVEL_ERROR, "Error preparing the outbox: %d - %s", (int)result, translate_AppMessageResult(result));
         }
     } else {
-        APP_LOG(APP_LOG_LEVEL_DEBUG, "Not sending message - JS not ready");
+//         APP_LOG(APP_LOG_LEVEL_DEBUG, "Not sending message - JS not ready");
     }
 }
 
@@ -102,7 +102,7 @@ static void handle_time_tick(struct tm *tick_time, TimeUnits units_changed) {
     wall_time_tm = *localtime(&wall_time_t);  
     set_solar_time();
     
-    APP_LOG(APP_LOG_LEVEL_DEBUG, "handle_time_tick() %d:%d", (int)wall_time_tm.tm_hour, (int)wall_time_tm.tm_min);  
+//     APP_LOG(APP_LOG_LEVEL_DEBUG, "handle_time_tick() %d:%d", (int)wall_time_tm.tm_hour, (int)wall_time_tm.tm_min);  
     
     if (/*wall_time_tm.tm_sec == 0 && */
         (wall_time_tm.tm_min == 0 || 
@@ -164,23 +164,23 @@ void in_received_handler(DictionaryIterator *received, void *ctx) {
 //     golden_hour_evening_time_solar = 0.0;
 
     
-    APP_LOG(APP_LOG_LEVEL_DEBUG, "Received from phone:");
+//     APP_LOG(APP_LOG_LEVEL_DEBUG, "Received from phone:");
     
     if (js_ready_tuple) {
         js_ready = true;
-        APP_LOG(APP_LOG_LEVEL_DEBUG, "  PebbleKit JS is ready");
+//         APP_LOG(APP_LOG_LEVEL_DEBUG, "  PebbleKit JS is ready");
     }
     
     if (date_tuple && strlen(date_tuple->value->cstring)) {
         if (strcmp(date_text, date_tuple->value->cstring) != 0) {
             snprintf(date_text, sizeof(date_text), "%s", date_tuple->value->cstring);
-            APP_LOG(APP_LOG_LEVEL_DEBUG, "  new date: %s", date_text);   
+//             APP_LOG(APP_LOG_LEVEL_DEBUG, "  new date: %s", date_text);   
             layer_mark_dirty(base_layer);
         }
     }
     
     if (location_available_tuple) {
-        APP_LOG(APP_LOG_LEVEL_DEBUG, "  location_available: %d", (int)location_available_tuple->value->uint8);   
+//         APP_LOG(APP_LOG_LEVEL_DEBUG, "  location_available: %d", (int)location_available_tuple->value->uint8);   
         if (current_location_available != location_available_tuple->value->uint8) {
             current_location_available  = location_available_tuple->value->uint8;
             layer_mark_dirty(services_layer);
@@ -189,7 +189,7 @@ void in_received_handler(DictionaryIterator *received, void *ctx) {
     if (temperature_tuple && strlen(temperature_tuple->value->cstring)) {
         if (strcmp(temperature_text, temperature_tuple->value->cstring) != 0) {
             snprintf(temperature_text, sizeof(temperature_text), "%s", temperature_tuple->value->cstring);
-            APP_LOG(APP_LOG_LEVEL_DEBUG, "  temperature: %s", temperature_text);   
+//             APP_LOG(APP_LOG_LEVEL_DEBUG, "  temperature: %s", temperature_text);   
             layer_mark_dirty(base_layer);
         }
     }
@@ -200,7 +200,7 @@ void in_received_handler(DictionaryIterator *received, void *ctx) {
             solar_offset  = solar_offset_tuple->value->int32;
             //APP_LOG(APP_LOG_LEVEL_DEBUG, "  solar offset: %d", (int)solar_offset);
 
-            vibes_enqueue_custom_pattern(vibePattern2);
+            //vibes_enqueue_custom_pattern(vibePattern2);
         }
         set_solar_time();
         
@@ -208,7 +208,7 @@ void in_received_handler(DictionaryIterator *received, void *ctx) {
             sunrise_time_tm.tm_hour = sunrise_hours_tuple->value->int32;
             sunrise_time_tm.tm_min  = sunrise_minutes_tuple->value->int32;
             sunrise_time_solar = tm_to_solar_time(sunrise_time_tm, solar_offset);
-            APP_LOG(APP_LOG_LEVEL_DEBUG, "  sunrise: %d:%d", (int)sunrise_time_tm.tm_hour, (int)sunrise_time_tm.tm_min);
+//             APP_LOG(APP_LOG_LEVEL_DEBUG, "  sunrise: %d:%d", (int)sunrise_time_tm.tm_hour, (int)sunrise_time_tm.tm_min);
             
             layer_mark_dirty(base_layer);
         }
@@ -216,7 +216,7 @@ void in_received_handler(DictionaryIterator *received, void *ctx) {
             sunset_time_tm.tm_hour = sunset_hours_tuple->value->int32;
             sunset_time_tm.tm_min  = sunset_minutes_tuple->value->int32;
             sunset_time_solar = tm_to_solar_time(sunset_time_tm, solar_offset);
-            APP_LOG(APP_LOG_LEVEL_DEBUG, "  sunset:  %d:%d", (int)sunset_time_tm.tm_hour,  (int)sunset_time_tm.tm_min);
+//             APP_LOG(APP_LOG_LEVEL_DEBUG, "  sunset:  %d:%d", (int)sunset_time_tm.tm_hour,  (int)sunset_time_tm.tm_min);
         }
         if (civil_dawn_hours_tuple && civil_dawn_minutes_tuple) {   
             struct tm civil_dawn_time_tm  = { 
@@ -286,19 +286,19 @@ void in_received_handler(DictionaryIterator *received, void *ctx) {
 }
 
 void in_dropped_handler(AppMessageResult reason, void *context) {
-    APP_LOG(APP_LOG_LEVEL_DEBUG, "Watch dropped data.");
+//     APP_LOG(APP_LOG_LEVEL_DEBUG, "Watch dropped data.");
 }
 
 void out_sent_handler(DictionaryIterator *sent, void *ctx) {
-    APP_LOG(APP_LOG_LEVEL_DEBUG, "Message sent to phone.");
+//     APP_LOG(APP_LOG_LEVEL_DEBUG, "Message sent to phone.");
 }
 
 void out_failed_handler(DictionaryIterator *failed, AppMessageResult reason, void *ctx) {
-    APP_LOG(APP_LOG_LEVEL_DEBUG, "Message FAILED to send to phone. Reason: %i - %s", (int)reason, translate_AppMessageResult(reason));
+//     APP_LOG(APP_LOG_LEVEL_DEBUG, "Message FAILED to send to phone. Reason: %i - %s", (int)reason, translate_AppMessageResult(reason));
 }
 
 void app_connection_handler(bool connected) {
-    APP_LOG(APP_LOG_LEVEL_INFO, "Pebble app is %sconnected", connected ? "" : "dis");
+//     APP_LOG(APP_LOG_LEVEL_INFO, "Pebble app is %sconnected", connected ? "" : "dis");
     current_connection_available = connected;
     vibes_enqueue_custom_pattern(vibePattern1);
     if (current_connection_available) {
@@ -329,7 +329,7 @@ void app_connection_handler(bool connected) {
 // }
 
 static void window_load(Window *window) {
-    APP_LOG(APP_LOG_LEVEL_DEBUG, "window_load()");
+//     APP_LOG(APP_LOG_LEVEL_DEBUG, "window_load()");
     Layer *window_layer = window_get_root_layer(window);
     GRect bounds = layer_get_bounds(window_layer);
     GRect unobstructed_bounds = layer_get_unobstructed_bounds(window_layer);
@@ -361,7 +361,7 @@ static void window_load(Window *window) {
 }
 
 static void window_unload(Window *window) {
-    APP_LOG(APP_LOG_LEVEL_DEBUG, "window_unload()");
+//     APP_LOG(APP_LOG_LEVEL_DEBUG, "window_unload()");
     unobstructed_area_service_unsubscribe();
 }
 
@@ -372,7 +372,7 @@ static void update_battery_percentage(BatteryChargeState c) {
 }
 
 static void init(void) {
-    APP_LOG(APP_LOG_LEVEL_DEBUG, "init()");
+//     APP_LOG(APP_LOG_LEVEL_DEBUG, "init()");
     app_message_register_inbox_received(in_received_handler);
     app_message_register_inbox_dropped(in_dropped_handler);
     app_message_register_outbox_sent(out_sent_handler);
@@ -398,7 +398,7 @@ static void init(void) {
     
     //app_message_open(app_message_inbox_size_maximum(), app_message_outbox_size_maximum());
     uint16_t result = app_message_open(1024,  APP_MESSAGE_OUTBOX_SIZE_MINIMUM);
-    APP_LOG(APP_LOG_LEVEL_DEBUG, "app_message_open(): %d", result);
+//     APP_LOG(APP_LOG_LEVEL_DEBUG, "app_message_open(): %d", result);
     
     window = window_create();
     window_set_window_handlers(window, (WindowHandlers) {
@@ -425,7 +425,7 @@ static void init(void) {
 }
 
 static void deinit(void) {
-    APP_LOG(APP_LOG_LEVEL_DEBUG, "deinit()");
+//     APP_LOG(APP_LOG_LEVEL_DEBUG, "deinit()");
     
     layer_remove_from_parent(services_layer); 
     layer_remove_from_parent(minute_layer);
@@ -441,7 +441,7 @@ static void deinit(void) {
 int main(void) {
     init();
     
-    APP_LOG(APP_LOG_LEVEL_DEBUG, "Done initializing, pushed window: %p", window);
+//     APP_LOG(APP_LOG_LEVEL_DEBUG, "Done initializing, pushed window: %p", window);
     
     app_event_loop();
     deinit();
