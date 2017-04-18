@@ -92,7 +92,8 @@ function locationSuccess(position) {
     longitude = toNumber(position.coords.longitude);
     localStorage.setItem("latitude",  latitude);
     localStorage.setItem("longitude", longitude);
-
+//latitude = 54;
+//longitude = 25;
 //     if (lastLatitude === null) {
 //         lastLatitude = latitude; 
 //     }
@@ -115,10 +116,11 @@ function locationError(error) {
     sendToWatch({"LOCATION_AVAILABLE" : 0});
 
     // Updade with cached location
-    if (!appIsStarting) {
+    if (appIsStarting) {
+        appIsStarting = false;    
         updateSunData();
-        updateWeather();
-        appIsStarting = false;
+    } else {
+        updateWeather();         
     }
     
     var errorText;
@@ -189,7 +191,8 @@ function updateSunData() {
 }
 
 function updateWeather() {
-    if (latitude === null || longitude === null) {
+//     console.log('updateWeather(): latitude='+latitude+', longitude='+longitude);
+    if (!latitude || !longitude) {
         return;
     }
     
@@ -199,26 +202,26 @@ function updateWeather() {
               '&lon=' + longitude + 
               '&cnt=1'+
               '&appid=2b5f53285b1d3978482a0ad6888d0427';
-    //console.log('updateWeather(): ' + url);
+//     console.log('updateWeather(): ' + url);
     
     var req = new XMLHttpRequest();
     req.open('GET', url, true);
     req.onload = function () {
-        //console.log('req.onload()');
+//         console.log('req.onload()');
         if (req.readyState === 4) {
             if (req.status === 200) {
-                //console.log(req.responseText);
+//                 console.log(req.responseText);
                 var response = JSON.parse(req.responseText);
                 var temperature = Math.round(response.main.temp);
                 var country = response.sys.country;
                 if (country === 'US') {
                     temperature = temperature * 9 / 5 + 32; // convert to Fahrenheit
                 }
-//                 console.log('Got temperature: ' + temperature + ' (' + country + ')');    
+                console.log('Got temperature: ' + temperature + ' (' + country + ')');    
                 sendToWatch({"TEMPERATURE" : temperature + '\xB0'});
-            } //else {
-//                 console.log('ERROR: unable to fetch weather info ' + JSON.stringify(req));
-//             }
+            } else {
+                console.log('ERROR: unable to fetch weather info ' + JSON.stringify(req));
+            }
         }
     };
     req.send();

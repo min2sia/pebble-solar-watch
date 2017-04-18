@@ -51,16 +51,37 @@ GColor daytime_color;
 GColor nighttime_color;
 
 // Vibe pattern: ON for X ms, OFF for Y ms, ON for W ms, etc.:
-static const uint32_t segments1[] = {50}; 
-VibePattern vibePattern1 = {
-    .durations = segments1,
-    .num_segments = ARRAY_LENGTH(segments1),
+static const uint32_t segments_short[] = {50}; 
+VibePattern vibePattern_short = {
+    .durations = segments_short,
+    .num_segments = ARRAY_LENGTH(segments_short),
 };
-static const uint32_t segments2[] = {50, 100, 50}; 
-VibePattern vibePattern2 = {
-    .durations = segments2,
-    .num_segments = ARRAY_LENGTH(segments2),
+static const uint32_t segments_short_x2[] = {50, 100, 50}; 
+VibePattern vibePattern_short_x2 = {
+    .durations = segments_short_x2,
+    .num_segments = ARRAY_LENGTH(segments_short_x2),
 };
+static const uint32_t segments_haribol[] = {100, 400, 100, 400, 400, 600,   100, 400, 100, 400, 400, 600,   100, 400, 100, 400, 400, 600,   100, 400, 100, 400, 400, 600}; 
+VibePattern vibePattern_haribol = {
+    .durations = segments_haribol,
+    .num_segments = ARRAY_LENGTH(segments_haribol),
+};
+static const uint32_t segments_sunrise[] = {50, 500, 50, 400, 50, 300, 50, 200, 50, 100, 50}; 
+VibePattern vibePattern_sunrise = {
+    .durations = segments_sunrise,
+    .num_segments = ARRAY_LENGTH(segments_sunrise),
+};
+static const uint32_t segments_sunset[] = {50, 100, 50, 200, 50, 300, 50, 400, 50, 500, 50};
+VibePattern vibePattern_sunset = {
+    .durations = segments_sunset,
+    .num_segments = ARRAY_LENGTH(segments_sunset),
+};
+static const uint32_t segments_noon[] = {50, 400, 50, 100, 50, 100, 50};
+VibePattern vibePattern_noon = {
+    .durations = segments_noon,
+    .num_segments = ARRAY_LENGTH(segments_noon),
+};
+
 
 void send_request(int command) {
   Tuplet command_tuple = TupletInteger(0 /*KEY_COMMAND*/ , command);
@@ -101,6 +122,32 @@ static void handle_time_tick(struct tm *tick_time, TimeUnits units_changed) {
     wall_time_t  = time(NULL);
     wall_time_tm = *localtime(&wall_time_t);  
     set_solar_time();
+    
+    // Play Brahma muhurta tune
+    if (solar_time_tm.tm_hour == 4 && solar_time_tm.tm_min == 24) {
+        vibes_enqueue_custom_pattern(vibePattern_haribol);
+    }
+    
+    // Play sunrise tune
+    if (sunrise_time_tm.tm_hour > 0 && sunrise_time_tm.tm_min > 0 && 
+        wall_time_tm.tm_hour == sunrise_time_tm.tm_hour && 
+        wall_time_tm.tm_min  == sunrise_time_tm.tm_min) {
+        vibes_enqueue_custom_pattern(vibePattern_sunrise);
+        
+    }
+    
+    // Play sunset tune
+    if (sunrise_time_tm.tm_hour > 0 && sunrise_time_tm.tm_min > 0 && 
+        wall_time_tm.tm_hour == sunrise_time_tm.tm_hour && 
+        wall_time_tm.tm_min  == sunrise_time_tm.tm_min) {
+        vibes_enqueue_custom_pattern(vibePattern_sunset);
+        
+    }
+    
+    // Play noon tune
+    if (solar_time_tm.tm_hour == 12 && solar_time_tm.tm_min == 0 ) {
+        vibes_enqueue_custom_pattern(vibePattern_noon);
+    }
     
 //     APP_LOG(APP_LOG_LEVEL_DEBUG, "handle_time_tick() %d:%d", (int)wall_time_tm.tm_hour, (int)wall_time_tm.tm_min);  
     
@@ -300,7 +347,10 @@ void out_failed_handler(DictionaryIterator *failed, AppMessageResult reason, voi
 void app_connection_handler(bool connected) {
 //     APP_LOG(APP_LOG_LEVEL_INFO, "Pebble app is %sconnected", connected ? "" : "dis");
     current_connection_available = connected;
-    vibes_enqueue_custom_pattern(vibePattern1);
+    if (!connected) {
+        current_location_available = false;
+    }
+    vibes_enqueue_custom_pattern(vibePattern_short);
     if (current_connection_available) {
         send_request(0); // blank request to trigger data refresh from phone JS
     }
@@ -358,6 +408,8 @@ static void window_load(Window *window) {
     services_layer = layer_create(bounds);
     layer_set_update_proc(services_layer, &services_layer_update_proc);
     layer_add_child(window_layer, services_layer);
+    
+    //vibes_enqueue_custom_pattern(vibePattern_sunset);
 }
 
 static void window_unload(Window *window) {
@@ -373,6 +425,10 @@ static void update_battery_percentage(BatteryChargeState c) {
 
 static void init(void) {
 //     APP_LOG(APP_LOG_LEVEL_DEBUG, "init()");
+    
+    wall_time_t  = time(NULL);
+    wall_time_tm = *localtime(&wall_time_t);  
+
     app_message_register_inbox_received(in_received_handler);
     app_message_register_inbox_dropped(in_dropped_handler);
     app_message_register_outbox_sent(out_sent_handler);
