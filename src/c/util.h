@@ -8,5 +8,6 @@ int my_abs(int in);
 double round(double number);
 double myatof (const char *p);
 void ftoa(char* str, double val, int precision);
-float tm_to_solar_time(struct tm in_tm, int16_t in_solar_offset);
+//float tm_to_solar_time(struct tm in_tm, int16_t in_solar_offset);
+float hm_to_time(Tuple *h, Tuple *m);
 char *translate_AppMessageResult(AppMessageResult result);

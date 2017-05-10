@@ -92,8 +92,8 @@ function locationSuccess(position) {
     longitude = toNumber(position.coords.longitude);
     localStorage.setItem("latitude",  latitude);
     localStorage.setItem("longitude", longitude);
-//latitude = 54;
-//longitude = 25;
+// latitude = 50; //54;
+// longitude = 25;
 //     if (lastLatitude === null) {
 //         lastLatitude = latitude; 
 //     }
@@ -149,41 +149,76 @@ function updateSunData() {
     }
     
     var solarCalc = new SolarCalc(new Date(), latitude, longitude);
+    var solarNoon         = solarCalc.solarNoon;
+    var zoneNoon = new Date(solarNoon); 
+    zoneNoon.setHours(12, 0, 0);
+    var solarOffsetMs = Math.floor((zoneNoon.getTime() - solarNoon.getTime()) / 1000);
+    var solarOffset = zoneNoon.getTime() - solarNoon.getTime();
+    
     var sunrise           = solarCalc.sunrise;
     var sunset            = solarCalc.sunset;
     var civilDawn         = solarCalc.civilDawn;
-    var nauticalDawn      = solarCalc.nauticalDawn;
-    var astronomicalDawn  = solarCalc.astronomicalDawn;
     var civilDusk         = solarCalc.civilDusk;
+    var nauticalDawn      = solarCalc.nauticalDawn;
     var nauticalDusk      = solarCalc.nauticalDusk;
+    var astronomicalDawn  = solarCalc.astronomicalDawn;
     var astronomicalDusk  = solarCalc.astronomicalDusk;
 //     var goldenHourEvening = solarCalc.goldenHourStart;
 //     var goldenHourMorning = solarCalc.goldenHourEnd;
-    var solarNoon         = solarCalc.solarNoon;
+console.log("------ Solar ------");
+console.log("Sunrise:           " + sunrise          + " set:  " + sunset);
+console.log("Civil dawn:        " + civilDawn        + " dusk: " + civilDusk);
+console.log("Nautical dawn:     " + nauticalDawn     + " dusk: " + nauticalDusk);
+console.log("Astronomical dawn: " + astronomicalDawn + " dusk: " + astronomicalDusk);
 
-    var zoneNoon = new Date(solarNoon); 
-    zoneNoon.setHours(12, 0, 0);
-    var solarOffset = Math.floor((zoneNoon.getTime() - solarNoon.getTime()) / 1000);
+    if (sunrise.getDate() === sunset.getDate()) {
+        message.W_SUNRISE_HOURS            = toNumber(sunrise.getHours());
+        message.W_SUNRISE_MINUTES          = toNumber(sunrise.getMinutes());
+        message.W_SUNSET_HOURS             = toNumber(sunset.getHours());
+        message.W_SUNSET_MINUTES           = toNumber(sunset.getMinutes());                
+    }
 
-    message.SOLAR_OFFSET               = toNumber(solarOffset);
-    message.SUNRISE_HOURS              = toNumber(sunrise.getHours());
-    message.SUNRISE_MINUTES            = toNumber(sunrise.getMinutes());
-    message.CIVIL_DAWN_HOURS           = toNumber(civilDawn.getHours());
-    message.CIVIL_DAWN_MINUTES         = toNumber(civilDawn.getMinutes());
-    message.NAUTICAL_DAWN_HOURS        = toNumber(nauticalDawn.getHours());
-    message.NAUTICAL_DAWN_MINUTES      = toNumber(nauticalDawn.getMinutes());
-    message.ASTRONOMICAL_DAWN_HOURS    = toNumber(astronomicalDawn.getHours());
-    message.ASTRONOMICAL_DAWN_MINUTES  = toNumber(astronomicalDawn.getMinutes());
+    message.SOLAR_OFFSET               = toNumber(solarOffsetMs);
+
+    sunrise.setMilliseconds         (sunrise.getMilliseconds()          + solarOffset);
+    sunset.setMilliseconds          (sunset.getMilliseconds()           + solarOffset);
+    civilDawn.setMilliseconds       (civilDawn.getMilliseconds()        + solarOffset);
+    civilDusk.setMilliseconds       (civilDusk.getMilliseconds()        + solarOffset);
+    nauticalDawn.setMilliseconds    (nauticalDawn.getMilliseconds()     + solarOffset);
+    nauticalDusk.setMilliseconds    (nauticalDusk.getMilliseconds()     + solarOffset);
+    astronomicalDawn.setMilliseconds(astronomicalDawn.getMilliseconds() + solarOffset);
+    astronomicalDusk.setMilliseconds(astronomicalDusk.getMilliseconds() + solarOffset);
+console.log("------ Solar ------");
+console.log("Sunrise:           " + sunrise          + " set:  " + sunset);
+console.log("Civil dawn:        " + civilDawn        + " dusk: " + civilDusk);
+console.log("Nautical dawn:     " + nauticalDawn     + " dusk: " + nauticalDusk);
+console.log("Astronomical dawn: " + astronomicalDawn + " dusk: " + astronomicalDusk);
+    if (sunrise.getDate() === sunset.getDate()) {
+        message.SUNRISE_HOURS              = toNumber(sunrise.getHours());
+        message.SUNRISE_MINUTES            = toNumber(sunrise.getMinutes());
+        message.SUNSET_HOURS               = toNumber(sunset.getHours());
+        message.SUNSET_MINUTES             = toNumber(sunset.getMinutes());                
+    }
+    if (civilDawn.getDate() === civilDusk.getDate()) {
+        message.CIVIL_DAWN_HOURS           = toNumber(civilDawn.getHours());
+        message.CIVIL_DAWN_MINUTES         = toNumber(civilDawn.getMinutes());
+        message.CIVIL_DUSK_HOURS           = toNumber(civilDusk.getHours());
+        message.CIVIL_DUSK_MINUTES         = toNumber(civilDusk.getMinutes());        
+    }
+    if (nauticalDawn.getDate() === nauticalDusk.getDate()) {
+        message.NAUTICAL_DAWN_HOURS        = toNumber(nauticalDawn.getHours());
+        message.NAUTICAL_DAWN_MINUTES      = toNumber(nauticalDawn.getMinutes());
+        message.NAUTICAL_DUSK_HOURS        = toNumber(nauticalDusk.getHours());
+        message.NAUTICAL_DUSK_MINUTES      = toNumber(nauticalDusk.getMinutes());        
+    }
+    if (astronomicalDawn.getDate() === astronomicalDusk.getDate()) {
+        message.ASTRONOMICAL_DAWN_HOURS    = toNumber(astronomicalDawn.getHours());
+        message.ASTRONOMICAL_DAWN_MINUTES  = toNumber(astronomicalDawn.getMinutes());
+        message.ASTRONOMICAL_DUSK_HOURS    = toNumber(astronomicalDusk.getHours());
+        message.ASTRONOMICAL_DUSK_MINUTES  = toNumber(astronomicalDusk.getMinutes());
+    }
     //         message.GOLDEN_H_MORNING_HOURS     = toNumber(goldenHourMorning.getHours());
     //         message.GOLDEN_H_MORNING_MINUTES   = toNumber(goldenHourMorning.getMinutes());
-    message.SUNSET_HOURS               = toNumber(sunset.getHours());
-    message.SUNSET_MINUTES             = toNumber(sunset.getMinutes());
-    message.CIVIL_DUSK_HOURS           = toNumber(civilDusk.getHours());
-    message.CIVIL_DUSK_MINUTES         = toNumber(civilDusk.getMinutes());
-    message.NAUTICAL_DUSK_HOURS        = toNumber(nauticalDusk.getHours());
-    message.NAUTICAL_DUSK_MINUTES      = toNumber(nauticalDusk.getMinutes());
-    message.ASTRONOMICAL_DUSK_HOURS    = toNumber(astronomicalDusk.getHours());
-    message.ASTRONOMICAL_DUSK_MINUTES  = toNumber(astronomicalDusk.getMinutes());
     //         message.GOLDEN_H_EVENING_HOURS     = toNumber(goldenHourEvening.getHours());
     //         message.GOLDEN_H_EVENING_MINUTES   = toNumber(goldenHourEvening.getMinutes());
     

@@ -105,9 +105,10 @@ static void draw_light_periods() {
     //             sunset_angle);
     graphics_fill_circle(ctx, center, clock_face_radius);
 
-    //APP_LOG(APP_LOG_LEVEL_DEBUG, "  sunrise_angle: %d, sunset_angle: %d", (int)sunrise_angle, (int)sunset_angle);
+//     APP_LOG(APP_LOG_LEVEL_DEBUG, "  sunrise_angle: %d, sunset_angle: %d", (int)sunrise_angle, (int)sunset_angle);
     sunrise_angle += TRIG_MAX_ANGLE; // switch from negative to positive angle        
-    //APP_LOG(APP_LOG_LEVEL_DEBUG, "  sunrise_angle: %d, sunset_angle: %d", (int)sunrise_angle, (int)sunset_angle);
+
+
 
     // Golden hour
 //     golden_hour_morning_angle += TRIG_MAX_ANGLE/2;
@@ -135,8 +136,10 @@ static void draw_light_periods() {
         //                 nighttime_color);
 //         #endif            
 //     }
+
+APP_LOG(APP_LOG_LEVEL_DEBUG, "  sunrise_angle:           %d, sunset_angle:            %d", (int)sunrise_angle, (int)sunset_angle);    
     // Civil twilight - first draw on whole duration of the night
-    if (sunrise_angle > sunset_angle) {
+    if (sunrise_time_solar && sunset_time_solar && sunrise_angle > sunset_angle) {
         #if defined(PBL_COLOR)
         graphics_context_set_fill_color(ctx, GColorBabyBlueEyes);
         graphics_fill_radial(
@@ -168,8 +171,9 @@ static void draw_light_periods() {
     nautical_dusk_angle     -= TRIG_MAX_ANGLE/2;
     astronomical_dusk_angle -= TRIG_MAX_ANGLE/2;        
 
+APP_LOG(APP_LOG_LEVEL_DEBUG, "  civil_dawn_angle:        %d, civil_dusk_angle:        %d", (int)civil_dawn_angle, (int)civil_dusk_angle);
     // Nautical twilight
-    if (civil_dawn_angle > civil_dusk_angle) {
+    if (civil_dawn_time_solar && civil_dusk_time_solar && civil_dawn_angle > civil_dusk_angle) {
         #if defined(PBL_COLOR)
         graphics_context_set_fill_color(ctx, GColorElectricUltramarine);
         graphics_fill_radial(
@@ -193,8 +197,9 @@ static void draw_light_periods() {
         #endif
     }
 
+APP_LOG(APP_LOG_LEVEL_DEBUG, "  nautical_dawn_angle:     %d, nautical_dusk_angle:     %d", (int)nautical_dawn_angle, (int)nautical_dusk_angle);
     // Astronomical twilight
-    if (nautical_dawn_angle > nautical_dusk_angle) {
+    if (nautical_dawn_time_solar && nautical_dusk_time_solar && nautical_dawn_angle > nautical_dusk_angle) {
         #if defined(PBL_COLOR)
         graphics_context_set_fill_color(ctx, GColorDukeBlue);
         graphics_fill_radial(
@@ -218,8 +223,9 @@ static void draw_light_periods() {
         #endif
     }  
 
+APP_LOG(APP_LOG_LEVEL_DEBUG, "  astronomical_dawn_angle: %d, astronomical_dusk_angle: %d", (int)astronomical_dawn_angle, (int)astronomical_dusk_angle);
     // Darkest part of night - may not occur at all on short nights
-    if (astronomical_dawn_angle > astronomical_dusk_angle) {
+    if (astronomical_dawn_time_solar && astronomical_dusk_time_solar && astronomical_dawn_angle > astronomical_dusk_angle) {
         graphics_context_set_fill_color(ctx, nighttime_color);
         graphics_fill_radial(
             ctx, 
@@ -398,31 +404,27 @@ static void draw_sunrise_sunset_times() {
         NULL);
 }
 
-static void draw_date() {
-    //draw current date month + day
-    
-    //strftime(month_text, sizeof(month_text), month_format, &wall_time_tm);
+static void draw_temperature() {
     draw_outlined_text(ctx,
-        date_text,
+        temperature_text,
         fonts_get_system_font(FONT_KEY_GOTHIC_18_BOLD),
         GRect(0, 0, center.x, 10),
         GTextOverflowModeWordWrap,
         GTextAlignmentLeft,
         0,
-        true);    
+        true);
 }
 
-static void draw_temperature() {
-
-    //strftime(day_text, sizeof(day_text), day_format, &wall_time_tm);
+static void draw_date() {
+    //draw current month + day    
     draw_outlined_text(ctx,
-        temperature_text,
+        date_text,
         fonts_get_system_font(FONT_KEY_GOTHIC_18_BOLD),
         GRect(center.x, 0, center.x, 10),
         GTextOverflowModeWordWrap,
         GTextAlignmentRight,
         0,
-        true);
+        true);    
 }
 
 void base_layer_update_proc(Layer *parm_layer, GContext *parm_ctx) {

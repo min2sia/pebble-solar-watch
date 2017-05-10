@@ -147,6 +147,15 @@ float tm_to_solar_time(struct tm in_tm, int16_t in_solar_offset) {
     return ret;
 }
 
+float hm_to_time(Tuple *h, Tuple *m) {
+    float ret = h->value->int32 + ((float)m->value->int32 / MINUTES_PER_HOUR);
+    //ret += (float)in_solar_offset / SECONDS_PER_HOUR;
+    if (ret > HOURS_PER_DAY) {
+        ret -= (float)HOURS_PER_DAY;
+    }
+    return ret;
+}
+
 char *translate_AppMessageResult(AppMessageResult result) {
   switch (result) {
     case APP_MSG_OK: return "APP_MSG_OK";

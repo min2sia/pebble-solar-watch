@@ -153,11 +153,12 @@ static void handle_time_tick(struct tm *tick_time, TimeUnits units_changed) {
     
     if (/*wall_time_tm.tm_sec == 0 && */
         (wall_time_tm.tm_min == 0 || 
-         wall_time_tm.tm_min == 10 || 
+         //wall_time_tm.tm_min == 10 || 
          wall_time_tm.tm_min == 20 || 
-         wall_time_tm.tm_min == 30 || 
-         wall_time_tm.tm_min == 40 || 
-         wall_time_tm.tm_min == 50)) {
+         //wall_time_tm.tm_min == 30 || 
+         wall_time_tm.tm_min == 40 
+         // || wall_time_tm.tm_min == 50
+        )) {
         //APP_LOG(APP_LOG_LEVEL_DEBUG, "  ping");
         send_request(0); // blank request to trigger data refresh from phone JS every 10 mins      
     }
@@ -172,6 +173,8 @@ void in_received_handler(DictionaryIterator *received, void *ctx) {
     Tuple *location_available_tuple          = dict_find(received, MESSAGE_KEY_LOCATION_AVAILABLE);
     Tuple *temperature_tuple                 = dict_find(received, MESSAGE_KEY_TEMPERATURE);    
     Tuple *solar_offset_tuple                = dict_find(received, MESSAGE_KEY_SOLAR_OFFSET);
+    Tuple *w_sunrise_hours_tuple             = dict_find(received, MESSAGE_KEY_W_SUNRISE_HOURS);
+    Tuple *w_sunrise_minutes_tuple           = dict_find(received, MESSAGE_KEY_W_SUNRISE_MINUTES);
     Tuple *sunrise_hours_tuple               = dict_find(received, MESSAGE_KEY_SUNRISE_HOURS);
     Tuple *sunrise_minutes_tuple             = dict_find(received, MESSAGE_KEY_SUNRISE_MINUTES);
     Tuple *civil_dawn_hours_tuple            = dict_find(received, MESSAGE_KEY_CIVIL_DAWN_HOURS);
@@ -182,6 +185,8 @@ void in_received_handler(DictionaryIterator *received, void *ctx) {
     Tuple *astronomical_dawn_minutes_tuple   = dict_find(received, MESSAGE_KEY_ASTRONOMICAL_DAWN_MINUTES);
 //     Tuple *golden_hour_morning_hours_tuple   = dict_find(received, MESSAGE_KEY_GOLDEN_H_MORNING_HOURS);
 //     Tuple *golden_hour_morning_minutes_tuple = dict_find(received, MESSAGE_KEY_GOLDEN_H_MORNING_MINUTES);
+    Tuple *w_sunset_hours_tuple              = dict_find(received, MESSAGE_KEY_W_SUNSET_HOURS);
+    Tuple *w_sunset_minutes_tuple            = dict_find(received, MESSAGE_KEY_W_SUNSET_MINUTES);
     Tuple *sunset_hours_tuple                = dict_find(received, MESSAGE_KEY_SUNSET_HOURS);
     Tuple *sunset_minutes_tuple              = dict_find(received, MESSAGE_KEY_SUNSET_MINUTES);
     Tuple *civil_dusk_hours_tuple            = dict_find(received, MESSAGE_KEY_CIVIL_DUSK_HOURS);
@@ -193,23 +198,6 @@ void in_received_handler(DictionaryIterator *received, void *ctx) {
 //     Tuple *golden_hour_evening_hours_tuple   = dict_find(received, MESSAGE_KEY_GOLDEN_H_EVENING_HOURS);
 //     Tuple *golden_hour_evening_minutes_tuple = dict_find(received, MESSAGE_KEY_GOLDEN_H_EVENING_MINUTES);    
    
-        
-//     solar_offset                   = 0;
-//     sunrise_time_tm.tm_hour        = 0;
-//     sunrise_time_tm.tm_min         = 0;
-//     sunrise_time_solar             = 0.0;
-//     sunset_time_tm.tm_hour         = 0;
-//     sunset_time_tm.tm_min          = 0;   
-//     sunset_time_solar              = 0.0;
-//     civil_dawn_time_solar          = 0.0;
-//     nautical_dawn_time_solar       = 0.0;
-//     astronomical_dawn_time_solar   = 0.0;
-//     civil_dusk_time_solar          = 0.0;
-//     nautical_dusk_time_solar       = 0.0;
-//     astronomical_dusk_time_solar   = 0.0;
-//     golden_hour_morning_time_solar = 0.0;
-//     golden_hour_evening_time_solar = 0.0;
-
     
 //     APP_LOG(APP_LOG_LEVEL_DEBUG, "Received from phone:");
     
@@ -242,77 +230,80 @@ void in_received_handler(DictionaryIterator *received, void *ctx) {
     }
     
     if (solar_offset_tuple) {  
-        
         if (solar_offset != solar_offset_tuple->value->int32) {
             solar_offset  = solar_offset_tuple->value->int32;
             //APP_LOG(APP_LOG_LEVEL_DEBUG, "  solar offset: %d", (int)solar_offset);
-
             //vibes_enqueue_custom_pattern(vibePattern2);
         }
         set_solar_time();
+    }
+    sunrise_time_tm.tm_hour = 0;
+    sunrise_time_tm.tm_min = 0;
+    sunset_time_tm.tm_hour = 0;
+    sunset_time_tm.tm_min = 0;
+    if (w_sunrise_hours_tuple && w_sunrise_minutes_tuple && w_sunset_hours_tuple && w_sunset_minutes_tuple) {
+        sunrise_time_tm.tm_hour = w_sunrise_hours_tuple->value->int32;
+        sunrise_time_tm.tm_min  = w_sunrise_minutes_tuple->value->int32;
+        sunset_time_tm.tm_hour  = w_sunset_hours_tuple->value->int32;
+        sunset_time_tm.tm_min   = w_sunset_minutes_tuple->value->int32;
+        APP_LOG(APP_LOG_LEVEL_DEBUG, "  wall sunrise:  %d:%d, sunset: %d:%d", (int)sunrise_time_tm.tm_hour, (int)sunrise_time_tm.tm_min, (int)sunset_time_tm.tm_hour, (int)sunset_time_tm.tm_min);
+    }
+    
+    sunrise_time_solar = 0;
+    sunset_time_solar = 0;
+    if (sunrise_hours_tuple && sunrise_minutes_tuple && sunset_hours_tuple && sunset_minutes_tuple) {
+        int ssrh = (int)sunrise_hours_tuple->value->int32;
+        int ssrm = (int)sunrise_minutes_tuple->value->int32;
+        int sssh = (int)sunset_hours_tuple->value->int32;
+        int sssm = (int)sunset_minutes_tuple->value->int32;
+        APP_LOG(APP_LOG_LEVEL_DEBUG, "  solar sunrise:  %d:%d, sunset: %d:%d", ssrh, ssrm, sssh, sssm);
+
+        //APP_LOG(APP_LOG_LEVEL_DEBUG, "  solar sunrise:  %d:%d, sunset: %d:%d", (int)sunrise_hours_tuple->value->int32,  (int)sunrise_hours_tuple->value->int32, (int)sunset_hours_tuple->value->int32,  (int)sunset_hours_tuple->value->int32);
+        sunrise_time_solar = hm_to_time(sunrise_hours_tuple, sunrise_minutes_tuple);
+        sunset_time_solar  = hm_to_time(sunset_hours_tuple, sunset_minutes_tuple);
+
+        layer_mark_dirty(base_layer);
+    }
+    
+    civil_dawn_time_solar = 0;
+    civil_dusk_time_solar = 0;
+    if (civil_dawn_hours_tuple && civil_dawn_minutes_tuple && civil_dusk_hours_tuple && civil_dusk_minutes_tuple) {
+        int cdah = (int)civil_dawn_hours_tuple->value->int32;
+        int cdam = (int)civil_dawn_minutes_tuple->value->int32;
+        int cduh = (int)civil_dusk_hours_tuple->value->int32;
+        int cdum = (int)civil_dusk_minutes_tuple->value->int32;
+        APP_LOG(APP_LOG_LEVEL_DEBUG, "  civil dawn:  %d:%d, dusk: %d:%d", cdah, cdam, cduh, cdum);
+        //APP_LOG(APP_LOG_LEVEL_DEBUG, "  civil dawn:  %d:%d, dusk: %d:%d", (int)civil_dawn_hours_tuple->value->int32,  (int)civil_dawn_hours_tuple->value->int32, (int)civil_dusk_time_solar->value->int32,  (int)civil_dusk_time_solar->value->int32);
+        civil_dawn_time_solar = hm_to_time(civil_dawn_hours_tuple, civil_dawn_minutes_tuple);            
+        civil_dusk_time_solar = hm_to_time(civil_dusk_hours_tuple, civil_dusk_minutes_tuple);
+    }
+    
+    nautical_dawn_time_solar = 0;
+    nautical_dusk_time_solar = 0;
+    if (nautical_dawn_hours_tuple && nautical_dawn_minutes_tuple && nautical_dusk_hours_tuple && nautical_dusk_minutes_tuple) {   
+        int ndah = (int)nautical_dawn_hours_tuple->value->int32;
+        int ndam = (int)nautical_dawn_minutes_tuple->value->int32;
+        int nduh = (int)nautical_dusk_hours_tuple->value->int32;
+        int ndum = (int)nautical_dusk_minutes_tuple->value->int32;
+        APP_LOG(APP_LOG_LEVEL_DEBUG, "  nautical dawn:  %d:%d, dusk: %d:%d", ndah, ndam, nduh, ndum);
+        //APP_LOG(APP_LOG_LEVEL_DEBUG, "  nautical dawn:  %d:%d, dusk: %d:%d", (int)nautical_dawn_hours_tuple->value->int32,  (int)nautical_dawn_hours_tuple->value->int32, (int)nautical_dusk_time_solar->value->int32,  (int)nautical_dusk_time_solar->value->int32);
+        nautical_dawn_time_solar = hm_to_time(nautical_dawn_hours_tuple, nautical_dawn_minutes_tuple);
+        nautical_dusk_time_solar = hm_to_time(nautical_dusk_hours_tuple, nautical_dusk_minutes_tuple);
+    }
+    
+    astronomical_dawn_time_solar = 0;
+    astronomical_dusk_time_solar= 0;
+    if (astronomical_dawn_hours_tuple && astronomical_dawn_minutes_tuple && astronomical_dusk_hours_tuple && astronomical_dusk_minutes_tuple) {   
+        int adah = (int)astronomical_dawn_hours_tuple->value->int32;
+        int adam = (int)astronomical_dawn_minutes_tuple->value->int32;
+        int aduh = (int)astronomical_dusk_hours_tuple->value->int32;
+        int adum = (int)astronomical_dusk_minutes_tuple->value->int32;
+        APP_LOG(APP_LOG_LEVEL_DEBUG, "  astronomical dawn:  %d:%d, dusk: %d:%d", adah, adam, aduh, adum);
+
+        astronomical_dawn_time_solar = hm_to_time(astronomical_dawn_hours_tuple, astronomical_dawn_minutes_tuple);
+        astronomical_dusk_time_solar = hm_to_time(astronomical_dusk_hours_tuple, astronomical_dusk_minutes_tuple);
+    }
         
-        if (sunrise_hours_tuple && sunrise_minutes_tuple) {        
-            sunrise_time_tm.tm_hour = sunrise_hours_tuple->value->int32;
-            sunrise_time_tm.tm_min  = sunrise_minutes_tuple->value->int32;
-            sunrise_time_solar = tm_to_solar_time(sunrise_time_tm, solar_offset);
-//             APP_LOG(APP_LOG_LEVEL_DEBUG, "  sunrise: %d:%d", (int)sunrise_time_tm.tm_hour, (int)sunrise_time_tm.tm_min);
-            
-            layer_mark_dirty(base_layer);
-        }
-        if (sunset_hours_tuple && sunset_minutes_tuple) {        
-            sunset_time_tm.tm_hour = sunset_hours_tuple->value->int32;
-            sunset_time_tm.tm_min  = sunset_minutes_tuple->value->int32;
-            sunset_time_solar = tm_to_solar_time(sunset_time_tm, solar_offset);
-//             APP_LOG(APP_LOG_LEVEL_DEBUG, "  sunset:  %d:%d", (int)sunset_time_tm.tm_hour,  (int)sunset_time_tm.tm_min);
-        }
-        if (civil_dawn_hours_tuple && civil_dawn_minutes_tuple) {   
-            struct tm civil_dawn_time_tm  = { 
-                .tm_hour = civil_dawn_hours_tuple->value->int32, 
-                .tm_min = civil_dawn_minutes_tuple->value->int32
-            };
-            civil_dawn_time_solar = tm_to_solar_time(civil_dawn_time_tm, solar_offset);
-            //APP_LOG(APP_LOG_LEVEL_DEBUG, "  civil dawn:  %d:%d", (int)civil_dawn_time_tm.tm_hour,  (int)civil_dawn_time_tm.tm_min);
-        }
-        if (nautical_dawn_hours_tuple && nautical_dawn_minutes_tuple) {   
-            struct tm nautical_dawn_time_tm  = { 
-                .tm_hour = nautical_dawn_hours_tuple->value->int32, 
-                .tm_min = nautical_dawn_minutes_tuple->value->int32
-            };
-            nautical_dawn_time_solar = tm_to_solar_time(nautical_dawn_time_tm, solar_offset);
-            //APP_LOG(APP_LOG_LEVEL_DEBUG, "  nautical dawn:  %d:%d", (int)nautical_dawn_time_tm.tm_hour,  (int)nautical_dawn_time_tm.tm_min);
-        }
-        if (astronomical_dawn_hours_tuple && astronomical_dawn_minutes_tuple) {   
-            struct tm astronomical_dawn_time_tm  = { 
-                .tm_hour = astronomical_dawn_hours_tuple->value->int32, 
-                .tm_min = astronomical_dawn_minutes_tuple->value->int32
-            };
-            astronomical_dawn_time_solar = tm_to_solar_time(astronomical_dawn_time_tm, solar_offset);
-            //APP_LOG(APP_LOG_LEVEL_DEBUG, "  astronomical dawn:  %d:%d", (int)astronomical_dawn_time_tm.tm_hour,  (int)astronomical_dawn_time_tm.tm_min);
-        }
-        if (civil_dusk_hours_tuple && civil_dusk_minutes_tuple) {   
-            struct tm civil_dusk_time_tm  = { 
-                .tm_hour = civil_dusk_hours_tuple->value->int32, 
-                .tm_min = civil_dusk_minutes_tuple->value->int32
-            };
-            civil_dusk_time_solar = tm_to_solar_time(civil_dusk_time_tm, solar_offset);
-            //APP_LOG(APP_LOG_LEVEL_DEBUG, "  civil dusk:  %d:%d", (int)civil_dusk_time_tm.tm_hour,  (int)civil_dusk_time_tm.tm_min);
-        }
-        if (nautical_dusk_hours_tuple && nautical_dusk_minutes_tuple) {   
-            struct tm nautical_dusk_time_tm  = { 
-                .tm_hour = nautical_dusk_hours_tuple->value->int32, 
-                .tm_min = nautical_dusk_minutes_tuple->value->int32
-            };
-            nautical_dusk_time_solar = tm_to_solar_time(nautical_dusk_time_tm, solar_offset);
-            //APP_LOG(APP_LOG_LEVEL_DEBUG, "  nautical dusk:  %d:%d", (int)nautical_dusk_time_tm.tm_hour,  (int)nautical_dusk_time_tm.tm_min);
-        }
-        if (astronomical_dusk_hours_tuple && astronomical_dusk_minutes_tuple) {   
-            struct tm astronomical_dusk_time_tm  = { 
-                .tm_hour = astronomical_dusk_hours_tuple->value->int32, 
-                .tm_min = astronomical_dusk_minutes_tuple->value->int32
-            };
-            astronomical_dusk_time_solar = tm_to_solar_time(astronomical_dusk_time_tm, solar_offset);
-            //APP_LOG(APP_LOG_LEVEL_DEBUG, "  astronomical dusk:  %d:%d", (int)astronomical_dusk_time_tm.tm_hour,  (int)astronomical_dusk_time_tm.tm_min);
-        }
 //         if (golden_hour_morning_hours_tuple && golden_hour_morning_minutes_tuple) {
 //             struct tm golden_hour_morning_time_tm  = { 
 //                 .tm_hour = golden_hour_morning_hours_tuple->value->int32, 
@@ -329,7 +320,7 @@ void in_received_handler(DictionaryIterator *received, void *ctx) {
 //             //APP_LOG(APP_LOG_LEVEL_DEBUG, "  golden hour evening:  %d:%d", (int)golden_hour_evening_time_tm.tm_hour,  (int)golden_hour_evening_time_tm.tm_min);
 //             golden_hour_evening_time_solar = tm_to_solar_time(golden_hour_evening_time_tm, solar_offset); 
 //         }
-    }    
+  
 }
 
 void in_dropped_handler(AppMessageResult reason, void *context) {

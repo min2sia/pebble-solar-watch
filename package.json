@@ -38,7 +38,11 @@
             "TEMPERATURE",
             "DATE",
             "JSREADY",
-            "LOCATION_AVAILABLE"
+            "LOCATION_AVAILABLE",
+            "W_SUNRISE_HOURS",
+            "W_SUNRISE_MINUTES",
+            "W_SUNSET_HOURS",
+            "W_SUNSET_MINUTES"
         ],
         "projectType": "native",
         "resources": {
@@ -97,5 +101,5 @@
             "watchface": true
         }
     },
-    "version": "2.0.0"
+    "version": "2.2.0"
 }
