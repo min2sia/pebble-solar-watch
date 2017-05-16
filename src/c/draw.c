@@ -1,5 +1,5 @@
 #include <pebble.h>
-#include "graph.h"
+#include "draw.h"
 #include "util.h"
 
 void draw_dotted_line_b(GContext* ctx, GPoint from, GPoint to, GColor color_1, GColor color_2, int step) {

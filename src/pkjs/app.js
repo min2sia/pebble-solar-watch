@@ -165,11 +165,11 @@ function updateSunData() {
     var astronomicalDusk  = solarCalc.astronomicalDusk;
 //     var goldenHourEvening = solarCalc.goldenHourStart;
 //     var goldenHourMorning = solarCalc.goldenHourEnd;
-console.log("------ Solar ------");
-console.log("Sunrise:           " + sunrise          + " set:  " + sunset);
-console.log("Civil dawn:        " + civilDawn        + " dusk: " + civilDusk);
-console.log("Nautical dawn:     " + nauticalDawn     + " dusk: " + nauticalDusk);
-console.log("Astronomical dawn: " + astronomicalDawn + " dusk: " + astronomicalDusk);
+// console.log("------ Wall  ------");
+// console.log("Sunrise:           " + sunrise          + " set:  " + sunset);
+// console.log("Civil dawn:        " + civilDawn        + " dusk: " + civilDusk);
+// console.log("Nautical dawn:     " + nauticalDawn     + " dusk: " + nauticalDusk);
+// console.log("Astronomical dawn: " + astronomicalDawn + " dusk: " + astronomicalDusk);
 
     if (sunrise.getDate() === sunset.getDate()) {
         message.W_SUNRISE_HOURS            = toNumber(sunrise.getHours());
@@ -188,11 +188,11 @@ console.log("Astronomical dawn: " + astronomicalDawn + " dusk: " + astronomicalD
     nauticalDusk.setMilliseconds    (nauticalDusk.getMilliseconds()     + solarOffset);
     astronomicalDawn.setMilliseconds(astronomicalDawn.getMilliseconds() + solarOffset);
     astronomicalDusk.setMilliseconds(astronomicalDusk.getMilliseconds() + solarOffset);
-console.log("------ Solar ------");
-console.log("Sunrise:           " + sunrise          + " set:  " + sunset);
-console.log("Civil dawn:        " + civilDawn        + " dusk: " + civilDusk);
-console.log("Nautical dawn:     " + nauticalDawn     + " dusk: " + nauticalDusk);
-console.log("Astronomical dawn: " + astronomicalDawn + " dusk: " + astronomicalDusk);
+// console.log("------ Solar ------");
+// console.log("Sunrise:           " + sunrise          + " set:  " + sunset);
+// console.log("Civil dawn:        " + civilDawn        + " dusk: " + civilDusk);
+// console.log("Nautical dawn:     " + nauticalDawn     + " dusk: " + nauticalDusk);
+// console.log("Astronomical dawn: " + astronomicalDawn + " dusk: " + astronomicalDusk);
     if (sunrise.getDate() === sunset.getDate()) {
         message.SUNRISE_HOURS              = toNumber(sunrise.getHours());
         message.SUNRISE_MINUTES            = toNumber(sunrise.getMinutes());

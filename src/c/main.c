@@ -107,7 +107,7 @@ void send_request(int command) {
 }
 
 static void set_solar_time() {
-//     APP_LOG(APP_LOG_LEVEL_DEBUG, "set_solar_time()");
+    APP_LOG(APP_LOG_LEVEL_DEBUG, "set_solar_time()");
     
     wall_time_t         = time(NULL);
     time_t solar_time_t = wall_time_t + solar_offset;
@@ -132,16 +132,16 @@ static void handle_time_tick(struct tm *tick_time, TimeUnits units_changed) {
     if (sunrise_time_tm.tm_hour > 0 && sunrise_time_tm.tm_min > 0 && 
         wall_time_tm.tm_hour == sunrise_time_tm.tm_hour && 
         wall_time_tm.tm_min  == sunrise_time_tm.tm_min) {
-        vibes_enqueue_custom_pattern(vibePattern_sunrise);
         
+        vibes_enqueue_custom_pattern(vibePattern_sunrise);
     }
     
     // Play sunset tune
     if (sunrise_time_tm.tm_hour > 0 && sunrise_time_tm.tm_min > 0 && 
         wall_time_tm.tm_hour == sunrise_time_tm.tm_hour && 
         wall_time_tm.tm_min  == sunrise_time_tm.tm_min) {
-        vibes_enqueue_custom_pattern(vibePattern_sunset);
         
+        vibes_enqueue_custom_pattern(vibePattern_sunset);
     }
     
     // Play noon tune
@@ -149,7 +149,7 @@ static void handle_time_tick(struct tm *tick_time, TimeUnits units_changed) {
         vibes_enqueue_custom_pattern(vibePattern_noon);
     }
     
-//     APP_LOG(APP_LOG_LEVEL_DEBUG, "handle_time_tick() %d:%d", (int)wall_time_tm.tm_hour, (int)wall_time_tm.tm_min);  
+    APP_LOG(APP_LOG_LEVEL_DEBUG, "handle_time_tick() %d:%d", (int)wall_time_tm.tm_hour, (int)wall_time_tm.tm_min);  
     
     if (/*wall_time_tm.tm_sec == 0 && */
         (wall_time_tm.tm_min == 0 || 
@@ -167,7 +167,7 @@ static void handle_time_tick(struct tm *tick_time, TimeUnits units_changed) {
 }
 
 void in_received_handler(DictionaryIterator *received, void *ctx) {
-    //APP_LOG(APP_LOG_LEVEL_DEBUG, "in_received_handler()");
+    APP_LOG(APP_LOG_LEVEL_DEBUG, "----------------------- in_received_handler() ---------------------------------------------");
     Tuple *js_ready_tuple                    = dict_find(received, MESSAGE_KEY_JSREADY);    
     Tuple *date_tuple                        = dict_find(received, MESSAGE_KEY_DATE);
     Tuple *location_available_tuple          = dict_find(received, MESSAGE_KEY_LOCATION_AVAILABLE);
@@ -203,19 +203,21 @@ void in_received_handler(DictionaryIterator *received, void *ctx) {
     
     if (js_ready_tuple) {
         js_ready = true;
-//         APP_LOG(APP_LOG_LEVEL_DEBUG, "  PebbleKit JS is ready");
+        APP_LOG(APP_LOG_LEVEL_DEBUG, "  PebbleKit JS is ready");
     }
     
     if (date_tuple && strlen(date_tuple->value->cstring)) {
         if (strcmp(date_text, date_tuple->value->cstring) != 0) {
             snprintf(date_text, sizeof(date_text), "%s", date_tuple->value->cstring);
-//             APP_LOG(APP_LOG_LEVEL_DEBUG, "  new date: %s", date_text);   
-            layer_mark_dirty(base_layer);
+            APP_LOG(APP_LOG_LEVEL_DEBUG, "  new date: %s", date_text);  
+            if (sunrise_time_solar > 0.0 && sunset_time_solar > 0.0) {
+                layer_mark_dirty(base_layer);
+            }
         }
     }
     
     if (location_available_tuple) {
-//         APP_LOG(APP_LOG_LEVEL_DEBUG, "  location_available: %d", (int)location_available_tuple->value->uint8);   
+        APP_LOG(APP_LOG_LEVEL_DEBUG, "  location_available: %d", (int)location_available_tuple->value->uint8);   
         if (current_location_available != location_available_tuple->value->uint8) {
             current_location_available  = location_available_tuple->value->uint8;
             layer_mark_dirty(services_layer);
@@ -224,23 +226,24 @@ void in_received_handler(DictionaryIterator *received, void *ctx) {
     if (temperature_tuple && strlen(temperature_tuple->value->cstring)) {
         if (strcmp(temperature_text, temperature_tuple->value->cstring) != 0) {
             snprintf(temperature_text, sizeof(temperature_text), "%s", temperature_tuple->value->cstring);
-//             APP_LOG(APP_LOG_LEVEL_DEBUG, "  temperature: %s", temperature_text);   
-            layer_mark_dirty(base_layer);
+            APP_LOG(APP_LOG_LEVEL_DEBUG, "  temperature: %s", temperature_text);   
+            layer_mark_dirty(services_layer);
         }
     }
     
     if (solar_offset_tuple) {  
         if (solar_offset != solar_offset_tuple->value->int32) {
             solar_offset  = solar_offset_tuple->value->int32;
-            //APP_LOG(APP_LOG_LEVEL_DEBUG, "  solar offset: %d", (int)solar_offset);
+            APP_LOG(APP_LOG_LEVEL_DEBUG, "  solar offset: %d", (int)solar_offset);
             //vibes_enqueue_custom_pattern(vibePattern2);
         }
         set_solar_time();
     }
-    sunrise_time_tm.tm_hour = 0;
-    sunrise_time_tm.tm_min = 0;
-    sunset_time_tm.tm_hour = 0;
-    sunset_time_tm.tm_min = 0;
+
+    //sunrise_time_tm.tm_hour = 0;
+    //sunrise_time_tm.tm_min = 0;
+    //sunset_time_tm.tm_hour = 0;
+    //sunset_time_tm.tm_min = 0;
     if (w_sunrise_hours_tuple && w_sunrise_minutes_tuple && w_sunset_hours_tuple && w_sunset_minutes_tuple) {
         sunrise_time_tm.tm_hour = w_sunrise_hours_tuple->value->int32;
         sunrise_time_tm.tm_min  = w_sunrise_minutes_tuple->value->int32;
@@ -249,8 +252,6 @@ void in_received_handler(DictionaryIterator *received, void *ctx) {
         APP_LOG(APP_LOG_LEVEL_DEBUG, "  wall sunrise:  %d:%d, sunset: %d:%d", (int)sunrise_time_tm.tm_hour, (int)sunrise_time_tm.tm_min, (int)sunset_time_tm.tm_hour, (int)sunset_time_tm.tm_min);
     }
     
-    sunrise_time_solar = 0;
-    sunset_time_solar = 0;
     if (sunrise_hours_tuple && sunrise_minutes_tuple && sunset_hours_tuple && sunset_minutes_tuple) {
         int ssrh = (int)sunrise_hours_tuple->value->int32;
         int ssrm = (int)sunrise_minutes_tuple->value->int32;
@@ -258,15 +259,18 @@ void in_received_handler(DictionaryIterator *received, void *ctx) {
         int sssm = (int)sunset_minutes_tuple->value->int32;
         APP_LOG(APP_LOG_LEVEL_DEBUG, "  solar sunrise:  %d:%d, sunset: %d:%d", ssrh, ssrm, sssh, sssm);
 
-        //APP_LOG(APP_LOG_LEVEL_DEBUG, "  solar sunrise:  %d:%d, sunset: %d:%d", (int)sunrise_hours_tuple->value->int32,  (int)sunrise_hours_tuple->value->int32, (int)sunset_hours_tuple->value->int32,  (int)sunset_hours_tuple->value->int32);
+        float old_sunrise_time_solar = sunrise_time_solar;    
+        float old_sunset_time_solar  = sunset_time_solar;
+        
         sunrise_time_solar = hm_to_time(sunrise_hours_tuple, sunrise_minutes_tuple);
-        sunset_time_solar  = hm_to_time(sunset_hours_tuple, sunset_minutes_tuple);
-
-        layer_mark_dirty(base_layer);
+        sunset_time_solar  = hm_to_time(sunset_hours_tuple,  sunset_minutes_tuple);
+        if (sunrise_time_solar != old_sunrise_time_solar || sunset_time_solar != old_sunset_time_solar) {
+            layer_mark_dirty(base_layer);
+        }
     }
     
-    civil_dawn_time_solar = 0;
-    civil_dusk_time_solar = 0;
+    //civil_dawn_time_solar = 0;
+    //civil_dusk_time_solar = 0;
     if (civil_dawn_hours_tuple && civil_dawn_minutes_tuple && civil_dusk_hours_tuple && civil_dusk_minutes_tuple) {
         int cdah = (int)civil_dawn_hours_tuple->value->int32;
         int cdam = (int)civil_dawn_minutes_tuple->value->int32;
@@ -278,8 +282,8 @@ void in_received_handler(DictionaryIterator *received, void *ctx) {
         civil_dusk_time_solar = hm_to_time(civil_dusk_hours_tuple, civil_dusk_minutes_tuple);
     }
     
-    nautical_dawn_time_solar = 0;
-    nautical_dusk_time_solar = 0;
+    //nautical_dawn_time_solar = 0;
+    //nautical_dusk_time_solar = 0;
     if (nautical_dawn_hours_tuple && nautical_dawn_minutes_tuple && nautical_dusk_hours_tuple && nautical_dusk_minutes_tuple) {   
         int ndah = (int)nautical_dawn_hours_tuple->value->int32;
         int ndam = (int)nautical_dawn_minutes_tuple->value->int32;
@@ -291,8 +295,8 @@ void in_received_handler(DictionaryIterator *received, void *ctx) {
         nautical_dusk_time_solar = hm_to_time(nautical_dusk_hours_tuple, nautical_dusk_minutes_tuple);
     }
     
-    astronomical_dawn_time_solar = 0;
-    astronomical_dusk_time_solar= 0;
+    //astronomical_dawn_time_solar = 0;
+    //astronomical_dusk_time_solar= 0;
     if (astronomical_dawn_hours_tuple && astronomical_dawn_minutes_tuple && astronomical_dusk_hours_tuple && astronomical_dusk_minutes_tuple) {   
         int adah = (int)astronomical_dawn_hours_tuple->value->int32;
         int adam = (int)astronomical_dawn_minutes_tuple->value->int32;
@@ -324,19 +328,19 @@ void in_received_handler(DictionaryIterator *received, void *ctx) {
 }
 
 void in_dropped_handler(AppMessageResult reason, void *context) {
-//     APP_LOG(APP_LOG_LEVEL_DEBUG, "Watch dropped data.");
+    APP_LOG(APP_LOG_LEVEL_DEBUG, "Watch dropped data.");
 }
 
 void out_sent_handler(DictionaryIterator *sent, void *ctx) {
-//     APP_LOG(APP_LOG_LEVEL_DEBUG, "Message sent to phone.");
+    APP_LOG(APP_LOG_LEVEL_DEBUG, "Message sent to phone.");
 }
 
 void out_failed_handler(DictionaryIterator *failed, AppMessageResult reason, void *ctx) {
-//     APP_LOG(APP_LOG_LEVEL_DEBUG, "Message FAILED to send to phone. Reason: %i - %s", (int)reason, translate_AppMessageResult(reason));
+    APP_LOG(APP_LOG_LEVEL_DEBUG, "Message FAILED to send to phone. Reason: %i - %s", (int)reason, translate_AppMessageResult(reason));
 }
 
 void app_connection_handler(bool connected) {
-//     APP_LOG(APP_LOG_LEVEL_INFO, "Pebble app is %sconnected", connected ? "" : "dis");
+    APP_LOG(APP_LOG_LEVEL_INFO, "Pebble app is %sconnected", connected ? "" : "dis");
     current_connection_available = connected;
     if (!connected) {
         current_location_available = false;
@@ -370,7 +374,7 @@ void app_connection_handler(bool connected) {
 // }
 
 static void window_load(Window *window) {
-//     APP_LOG(APP_LOG_LEVEL_DEBUG, "window_load()");
+    APP_LOG(APP_LOG_LEVEL_DEBUG, "window_load()");
     Layer *window_layer = window_get_root_layer(window);
     GRect bounds = layer_get_bounds(window_layer);
     GRect unobstructed_bounds = layer_get_unobstructed_bounds(window_layer);
@@ -395,27 +399,26 @@ static void window_load(Window *window) {
     layer_set_update_proc(minute_layer, &minute_layer_update_proc);
     layer_add_child(window_layer, minute_layer);
 
-    // display battery status
+    // display battery status, temperature, location service status
     services_layer = layer_create(bounds);
     layer_set_update_proc(services_layer, &services_layer_update_proc);
     layer_add_child(window_layer, services_layer);
-    
-    //vibes_enqueue_custom_pattern(vibePattern_sunset);
 }
 
 static void window_unload(Window *window) {
-//     APP_LOG(APP_LOG_LEVEL_DEBUG, "window_unload()");
+    APP_LOG(APP_LOG_LEVEL_DEBUG, "window_unload()");
     unobstructed_area_service_unsubscribe();
 }
 
 static void update_battery_percentage(BatteryChargeState c) {
+    APP_LOG(APP_LOG_LEVEL_DEBUG, "update_battery_percentage()");
     int battery_level_int = c.charge_percent;
     snprintf(battery_level_string, 5, "%d%%", battery_level_int);
     layer_mark_dirty(services_layer);
 }
 
 static void init(void) {
-//     APP_LOG(APP_LOG_LEVEL_DEBUG, "init()");
+    APP_LOG(APP_LOG_LEVEL_DEBUG, "init()");
     
     wall_time_t  = time(NULL);
     wall_time_tm = *localtime(&wall_time_t);  
@@ -488,7 +491,7 @@ static void deinit(void) {
 int main(void) {
     init();
     
-//     APP_LOG(APP_LOG_LEVEL_DEBUG, "Done initializing, pushed window: %p", window);
+    APP_LOG(APP_LOG_LEVEL_DEBUG, "Done initializing, pushed window: %p", window);
     
     app_event_loop();
     deinit();

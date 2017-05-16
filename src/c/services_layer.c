@@ -1,11 +1,12 @@
 #include <pebble.h>
 #include "main.h"
-#include "graph.h"
+#include "draw.h"
 #include "services_layer.h"
 
 Layer *layer; 
 GContext *ctx;
 GRect bounds;
+GPoint center;
 
 void draw_battery_status() {
     GRect bounds = layer_get_bounds(layer);
@@ -53,12 +54,25 @@ void draw_GPS_icon() {
     }
 }
 
+static void draw_temperature() {
+    draw_outlined_text(ctx,
+        temperature_text,
+        fonts_get_system_font(FONT_KEY_GOTHIC_18_BOLD),
+        GRect(0, 0, center.x, 10),
+        GTextOverflowModeWordWrap,
+        GTextAlignmentLeft,
+        0,
+        true);
+}
+
 void services_layer_update_proc(Layer *parm_layer, GContext *parm_ctx) {
     layer  = parm_layer;
     ctx    = parm_ctx;
     bounds = layer_get_bounds(layer);
+    center = grect_center_point(&bounds);  
 
     draw_battery_status();
     draw_bluetooth_icon();
     draw_GPS_icon();
+    draw_temperature();
 }
