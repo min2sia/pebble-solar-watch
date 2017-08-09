@@ -42,7 +42,8 @@
             "W_SUNRISE_HOURS",
             "W_SUNRISE_MINUTES",
             "W_SUNSET_HOURS",
-            "W_SUNSET_MINUTES"
+            "W_SUNSET_MINUTES",
+            "POLAR_DAY_NIGHT"
         ],
         "projectType": "native",
         "resources": {

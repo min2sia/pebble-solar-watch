@@ -66,6 +66,7 @@ static void draw_temperature() {
 }
 
 void services_layer_update_proc(Layer *parm_layer, GContext *parm_ctx) {
+APP_LOG(APP_LOG_LEVEL_DEBUG, "services_layer.services_layer_update_proc()");
     layer  = parm_layer;
     ctx    = parm_ctx;
     bounds = layer_get_bounds(layer);

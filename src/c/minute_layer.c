@@ -9,7 +9,7 @@ GPoint center;
 uint16_t radius;
 
 static void draw_hour_hand() {
-    if (sunrise_time_solar == 0.0 || sunset_time_solar == 0.0) return;
+    //if (sunrise_time_solar == 0.0 || sunset_time_solar == 0.0) return;
     
     const uint16_t hand_length = radius - 19;
     GPathInfo p_hour_hand_info = {
@@ -73,7 +73,7 @@ static void draw_solar_wall_times() {
         1,
         true);
     
-    if (sunrise_time_solar > 0.0 && sunset_time_solar > 0.0) { // assume that solar time is known
+    if (solar_offset != 0) { 
         strftime(solar_time_text, sizeof(solar_time_text), time_format, &solar_time_tm);
         draw_outlined_text(
             ctx,

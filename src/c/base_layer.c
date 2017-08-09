@@ -68,8 +68,7 @@ static void draw_sunrays() {
 
 static void draw_light_periods() {
     APP_LOG(APP_LOG_LEVEL_DEBUG, "base_layer.draw_light_periods()");
-    if (sunrise_time_solar == 0.0 || sunset_time_solar == 0.0) {
-        APP_LOG(APP_LOG_LEVEL_DEBUG, "    exit");
+    if (solar_offset == 0) {
         return;
     }
 
@@ -80,46 +79,42 @@ static void draw_light_periods() {
     GRect clock_face_bounds = bounds;
     clock_face_bounds.origin.x += 3;
     clock_face_bounds.size.w -= 6;
-
-    int32_t sunrise_angle              = (TRIG_MAX_ANGLE * sunrise_time_solar)              / HOURS_PER_DAY;
-    int32_t civil_dawn_angle           = (TRIG_MAX_ANGLE * civil_dawn_time_solar)           / HOURS_PER_DAY;
-    int32_t nautical_dawn_angle        = (TRIG_MAX_ANGLE * nautical_dawn_time_solar)        / HOURS_PER_DAY;
-    int32_t astronomical_dawn_angle    = (TRIG_MAX_ANGLE * astronomical_dawn_time_solar)    / HOURS_PER_DAY;
-    int32_t sunset_angle               = (TRIG_MAX_ANGLE * sunset_time_solar)               / HOURS_PER_DAY;
-    int32_t civil_dusk_angle           = (TRIG_MAX_ANGLE * civil_dusk_time_solar)           / HOURS_PER_DAY;
-    int32_t nautical_dusk_angle        = (TRIG_MAX_ANGLE * nautical_dusk_time_solar)        / HOURS_PER_DAY;
-    int32_t astronomical_dusk_angle    = (TRIG_MAX_ANGLE * astronomical_dusk_time_solar)    / HOURS_PER_DAY;
-//     int32_t golden_hour_morning_angle  = (TRIG_MAX_ANGLE * golden_hour_morning_time_solar)  / HOURS_PER_DAY;
-//     int32_t golden_hour_evening_angle  = (TRIG_MAX_ANGLE * golden_hour_evening_time_solar)  / HOURS_PER_DAY;
+    
+    
+    if (polar_day_night == 0) { // Regular day
+        graphics_context_set_fill_color(ctx, daytime_color);
+        graphics_fill_circle(ctx, center, clock_face_radius);
+    } else if (polar_day_night == 1) { // Polar day - nothing else to draw
+        graphics_context_set_fill_color(ctx, daytime_color);
+        graphics_fill_circle(ctx, center, clock_face_radius);
+        return;
+    } else if (polar_day_night == 2) { // Polar night
+    }
+    
+    uint32_t seconds_per_day = HOURS_PER_DAY * SECONDS_PER_HOUR;
+    int32_t sunrise_angle              = TRIG_MAX_ANGLE * (float)sunrise_time_solar              / seconds_per_day;
+    int32_t sunset_angle               = TRIG_MAX_ANGLE * (float)sunset_time_solar               / seconds_per_day;
+    int32_t civil_dawn_angle           = TRIG_MAX_ANGLE * (float)civil_dawn_time_solar           / seconds_per_day;
+    int32_t nautical_dawn_angle        = TRIG_MAX_ANGLE * (float)nautical_dawn_time_solar        / seconds_per_day;
+    int32_t astronomical_dawn_angle    = TRIG_MAX_ANGLE * (float)astronomical_dawn_time_solar    / seconds_per_day;
+    int32_t civil_dusk_angle           = TRIG_MAX_ANGLE * (float)civil_dusk_time_solar           / seconds_per_day;
+    int32_t nautical_dusk_angle        = TRIG_MAX_ANGLE * (float)nautical_dusk_time_solar        / seconds_per_day;
+    int32_t astronomical_dusk_angle    = TRIG_MAX_ANGLE * (float)astronomical_dusk_time_solar    / seconds_per_day;
+//     int32_t golden_hour_morning_angle  = TRIG_MAX_ANGLE * (float)golden_hour_morning_time_solar  / seconds_per_day;
+//     int32_t golden_hour_evening_angle  = TRIG_MAX_ANGLE * (float)golden_hour_evening_time_solar  / seconds_per_day;
 
 
     // Screen's 0 degrees is at the top, while watch dial mark for 0 hours is at the bottom, we neeed to rotate all angles by -180 deg
-    // E.g. 80 to -100, 280 to 100, etc.
-    sunrise_angle -= TRIG_MAX_ANGLE/2; // it gets negative at this point
+    // E.g. 80 -> -100; 280 -> 100; etc.
+    sunrise_angle += TRIG_MAX_ANGLE/2;
     sunset_angle  -= TRIG_MAX_ANGLE/2;
-
-    // Day
-    graphics_context_set_fill_color(ctx, daytime_color);
-    //         graphics_fill_radial(
-    //             ctx, 
-    //             grect_inset(clock_face_bounds, GEdgeInsets(0)), 
-    //             GOvalScaleModeFitCircle, 
-    //             clock_face_radius, 
-    //             sunrise_angle, // it is negative at this point
-    //             sunset_angle);
-    graphics_fill_circle(ctx, center, clock_face_radius);
-
-//     APP_LOG(APP_LOG_LEVEL_DEBUG, "  sunrise_angle: %d, sunset_angle: %d", (int)sunrise_angle, (int)sunset_angle);
-    sunrise_angle += TRIG_MAX_ANGLE; // switch from negative to positive angle        
-
-
 
     // Golden hour
 //     golden_hour_morning_angle += TRIG_MAX_ANGLE/2;
 //     golden_hour_evening_angle -= TRIG_MAX_ANGLE/2;
 //     if (golden_hour_morning_angle > golden_hour_evening_angle) {
 //         #if defined(PBL_COLOR)
-//         graphics_context_set_fill_color(ctx, GColorRajah);
+//         graphics_context_set_fill_color(ctx, golden_hour_color);
 //         graphics_fill_radial(
 //             ctx, 
 //             grect_inset(clock_face_bounds, GEdgeInsets(0)), 
@@ -141,16 +136,18 @@ static void draw_light_periods() {
 //         #endif            
 //     }
 
-APP_LOG(APP_LOG_LEVEL_DEBUG, "  sunrise_angle:           %d, sunset_angle:            %d", (int)sunrise_angle, (int)sunset_angle);    
+// APP_LOG(APP_LOG_LEVEL_DEBUG, "  sunrise_angle:           %d, sunset_angle:            %d", (int)sunrise_angle, (int)sunset_angle);    
     // Civil twilight - first draw on whole duration of the night
-    if (sunrise_time_solar > 0.0  && 
+    if (polar_day_night == 0 &&
+        sunrise_time_solar > 0.0  && 
         sunset_time_solar  > 0.0  && 
         sunrise_angle > 0  &&
         sunset_angle  > 0  &&
         sunrise_angle > sunset_angle) {
         
+//         APP_LOG(APP_LOG_LEVEL_DEBUG, "  drawing Civil twilight");
         #if defined(PBL_COLOR)
-        graphics_context_set_fill_color(ctx, GColorBabyBlueEyes);
+        graphics_context_set_fill_color(ctx, civil_twilight_color);
         graphics_fill_radial(
             ctx, 
             grect_inset(clock_face_bounds, GEdgeInsets(0)), 
@@ -170,8 +167,14 @@ APP_LOG(APP_LOG_LEVEL_DEBUG, "  sunrise_angle:           %d, sunset_angle:      
             daytime_color, 
             nighttime_color);
         #endif
+    } else {
+//         graphics_context_set_fill_color(ctx, civil_twilight_color);
+//         graphics_fill_circle(ctx, center, clock_face_radius);
     }
-
+    
+    
+//     sunrise_angle += (int)((float)TRIG_MAX_ANGLE/2);
+//     sunset_angle  -= (int)((float)TRIG_MAX_ANGLE/2);
     civil_dawn_angle        += TRIG_MAX_ANGLE/2;
     nautical_dawn_angle     += TRIG_MAX_ANGLE/2;
     astronomical_dawn_angle += TRIG_MAX_ANGLE/2;
@@ -188,8 +191,9 @@ APP_LOG(APP_LOG_LEVEL_DEBUG, "  civil_dawn_angle:        %d, civil_dusk_angle:  
         civil_dusk_angle > 0  &&
         civil_dawn_angle > civil_dusk_angle) {
         
+//         APP_LOG(APP_LOG_LEVEL_DEBUG, "  drawing Nautical twilight");
         #if defined(PBL_COLOR)
-        graphics_context_set_fill_color(ctx, GColorElectricUltramarine);
+        graphics_context_set_fill_color(ctx, nautical_twilight_color);
         graphics_fill_radial(
             ctx, 
             grect_inset(clock_face_bounds, GEdgeInsets(0)), 
@@ -209,6 +213,9 @@ APP_LOG(APP_LOG_LEVEL_DEBUG, "  civil_dawn_angle:        %d, civil_dusk_angle:  
             daytime_color, 
             nighttime_color);
         #endif
+    } else {
+//         graphics_context_set_fill_color(ctx, nautical_twilight_color);
+//         graphics_fill_circle(ctx, center, clock_face_radius);
     }
 
 APP_LOG(APP_LOG_LEVEL_DEBUG, "  nautical_dawn_angle:     %d, nautical_dusk_angle:     %d", (int)nautical_dawn_angle, (int)nautical_dusk_angle);
@@ -218,9 +225,11 @@ APP_LOG(APP_LOG_LEVEL_DEBUG, "  nautical_dawn_angle:     %d, nautical_dusk_angle
         nautical_dawn_angle > 0  &&
         nautical_dusk_angle > 0  &&
         nautical_dawn_angle > nautical_dusk_angle) {
+
+//         APP_LOG(APP_LOG_LEVEL_DEBUG, "  drawing Astronomical twilight");
         
         #if defined(PBL_COLOR)
-        graphics_context_set_fill_color(ctx, GColorDukeBlue);
+        graphics_context_set_fill_color(ctx, astronomical_twilight_color);
         graphics_fill_radial(
             ctx, 
             grect_inset(clock_face_bounds, GEdgeInsets(0)), 
@@ -240,7 +249,10 @@ APP_LOG(APP_LOG_LEVEL_DEBUG, "  nautical_dawn_angle:     %d, nautical_dusk_angle
             nighttime_color, 
             daytime_color);
         #endif
-    }  
+    } else {
+//         graphics_context_set_fill_color(ctx, astronomical_twilight_color);
+//         graphics_fill_circle(ctx, center, clock_face_radius);
+    }
 
 APP_LOG(APP_LOG_LEVEL_DEBUG, "  astronomical_dawn_angle: %d, astronomical_dusk_angle: %d", (int)astronomical_dawn_angle, (int)astronomical_dusk_angle);
     // Darkest part of night - may not occur at all on short nights
@@ -249,7 +261,7 @@ APP_LOG(APP_LOG_LEVEL_DEBUG, "  astronomical_dawn_angle: %d, astronomical_dusk_a
         astronomical_dawn_angle > 0 &&
         astronomical_dusk_angle > 0 &&
         astronomical_dawn_angle > astronomical_dusk_angle) {
-        
+        APP_LOG(APP_LOG_LEVEL_DEBUG, "  drawing night");
         graphics_context_set_fill_color(ctx, nighttime_color);
         graphics_fill_radial(
             ctx, 
@@ -258,7 +270,9 @@ APP_LOG(APP_LOG_LEVEL_DEBUG, "  astronomical_dawn_angle: %d, astronomical_dusk_a
             clock_face_radius, 
             astronomical_dusk_angle, 
             astronomical_dawn_angle);         
-    }  
+    } else {
+//        APP_LOG(APP_LOG_LEVEL_DEBUG, "  skipping night");
+    }
 
     // Draw solid lines separating day and night times
     //         GPoint sunrise_point = {
@@ -441,7 +455,7 @@ static void draw_date() {
 }
 
 void base_layer_update_proc(Layer *parm_layer, GContext *parm_ctx) {
-APP_LOG(APP_LOG_LEVEL_DEBUG, "base_layer.base_layer_update_proc()");
+APP_LOG(APP_LOG_LEVEL_DEBUG, "base_layer.base_layer_update_proc() !!!!!!!!!!!!!!!!!!!");
     layer  = parm_layer;
     ctx    = parm_ctx;
     bounds = layer_get_bounds(layer);
