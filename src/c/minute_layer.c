@@ -9,7 +9,7 @@ GPoint center;
 uint16_t radius;
 
 static void draw_hour_hand() {
-    //if (sunrise_time_solar == 0.0 || sunset_time_solar == 0.0) return;
+    //if (solar_offset == 0) return;
     
     const uint16_t hand_length = radius - 19;
     GPathInfo p_hour_hand_info = {

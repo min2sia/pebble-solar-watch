@@ -487,6 +487,19 @@ static void init(void) {
     if (persist_exists(13)) {
         polar_day_night = persist_read_int(13);
     }
+    if (persist_exists(14)) {
+        sunrise_time_tm.tm_hour = persist_read_int(14);
+    }
+    if (persist_exists(15)) {
+        sunrise_time_tm.tm_min = persist_read_int(15);
+    }
+    if (persist_exists(16)) {
+        sunset_time_tm.tm_hour = persist_read_int(16);
+    }
+    if (persist_exists(17)) {
+        sunset_time_tm.tm_min = persist_read_int(17);
+    }
+    set_solar_time();
 
     #if defined(PBL_RECT)
         //font_clock_time = fonts_load_custom_font(resource_get_handle(RESOURCE_ID_SOURCE_SANS_PRO_BLACK_26));
@@ -557,7 +570,11 @@ static void deinit(void) {
     persist_write_int(10, golden_hour_morning_time_solar);
     persist_write_int(11, golden_hour_evening_time_solar);
     persist_write_int(12, solar_offset);
-    persist_write_int(13, polar_day_night);       
+    persist_write_int(13, polar_day_night);   
+    persist_write_int(14, sunrise_time_tm.tm_hour);       
+    persist_write_int(15, sunrise_time_tm.tm_min);       
+    persist_write_int(16, sunset_time_tm.tm_hour);       
+    persist_write_int(17, sunset_time_tm.tm_min);       
 }
 
 int main(void) {

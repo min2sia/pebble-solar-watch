@@ -416,7 +416,7 @@ static void draw_sunrise_sunset_times() {
     static char sunrise_text[] = "  ...   ";
     static char sunset_text[]  = "  ...   ";
     
-    if (sunrise_time_solar && sunset_time_solar) {
+    if (solar_offset != 0) {
         strftime(sunrise_text, sizeof(sunrise_text), time_format, &sunrise_time_tm);
         strftime(sunset_text,  sizeof(sunset_text),  time_format, &sunset_time_tm);
     }
@@ -455,7 +455,7 @@ static void draw_date() {
 }
 
 void base_layer_update_proc(Layer *parm_layer, GContext *parm_ctx) {
-APP_LOG(APP_LOG_LEVEL_DEBUG, "base_layer.base_layer_update_proc() !!!!!!!!!!!!!!!!!!!");
+//APP_LOG(APP_LOG_LEVEL_DEBUG, "base_layer.base_layer_update_proc() !!!!!!!!!!!!!!!!!!!");
     layer  = parm_layer;
     ctx    = parm_ctx;
     bounds = layer_get_bounds(layer);
